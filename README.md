@@ -185,4 +185,4 @@ flowchart LR
 
 ## 👤 Autor
 
-Desarrollado por **Guillermo** ([@Jeyz29](https://github.com/Jeyz29)) como proyecto de portafolio Full-Stack (React + TypeScript + Node.js + SQLite).
+Desarrollado por **Gustavo Berne** ([@Jeyz29](https://github.com/Jeyz29))([@LinkedIn](https://www.linkedin.com/in/gustavo-berne-454b67434/))
