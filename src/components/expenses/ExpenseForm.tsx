@@ -1,6 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { PlusCircle, ArrowLeftRight, CalendarClock } from 'lucide-react';
-import type { Category, Subcategory, CreateExpenseInput } from '../../types/index.ts';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import {
+  PlusCircle,
+  ArrowLeftRight,
+  CalendarClock,
+  Sparkles,
+  ChevronRight,
+} from 'lucide-react';
+import type {
+  Category,
+  Subcategory,
+  CreateExpenseInput,
+  Expense,
+} from '../../types/index.ts';
 import { api } from '../../services/api.ts';
 import {
   getTodayISO,
@@ -9,6 +20,24 @@ import {
   formatBolivares,
   formatShortDate,
 } from '../../utils/formatters.ts';
+
+const normalizeText = (text: string): string =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+interface ExpenseSuggestion {
+  description: string;
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  subcategory_id: string;
+  subcategory_name: string | null;
+  lastAmountUsd: number;
+  count: number;
+  lastDate: string;
+}
 
 interface ExpenseFormProps {
   categories: Category[];
@@ -38,6 +67,13 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Estado para el autocompletado inteligente de gastos
+  const [historicalExpenses, setHistoricalExpenses] = useState<Expense[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const suggestionContainerRef = useRef<HTMLDivElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+
   // Estado de la tasa BCV específica para la fecha seleccionada en el formulario
   const [dateUsdRate, setDateUsdRate] = useState<number>(currentBcvRate);
   const [dateEurRate, setDateEurRate] = useState<number>(currentBcvEurRate);
@@ -46,6 +82,119 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const [useValueDateMode, setUseValueDateMode] = useState<boolean>(false);
   const [loadingDateRate, setLoadingDateRate] = useState<boolean>(false);
   const [isHistoricalRate, setIsHistoricalRate] = useState<boolean>(false);
+
+  const loadHistoryForAutocomplete = useCallback(async () => {
+    try {
+      const all = await api.getExpenses();
+      setHistoricalExpenses(all);
+    } catch {
+      // Silencioso si falla
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistoryForAutocomplete();
+  }, [loadHistoryForAutocomplete]);
+
+  // Cerrar el menú de sugerencias al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionContainerRef.current &&
+        !suggestionContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Construir catálogo único de sugerencias ordenadas por frecuencia y recencia
+  const allSuggestions = useMemo<ExpenseSuggestion[]>(() => {
+    const map = new Map<string, ExpenseSuggestion>();
+
+    // historicalExpenses ya viene ordenado por expense_date DESC, created_at DESC
+    for (const exp of historicalExpenses) {
+      const cleanDesc = (exp.description || '').trim();
+      if (!cleanDesc) continue;
+      const key = normalizeText(cleanDesc);
+
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, {
+          description: cleanDesc,
+          category_id: exp.category_id,
+          category_name: exp.category_name,
+          category_color: exp.category_color,
+          subcategory_id: exp.subcategory_id || '',
+          subcategory_name: exp.subcategory_name || null,
+          lastAmountUsd: exp.amount,
+          count: 1,
+          lastDate: exp.expense_date,
+        });
+      } else {
+        existing.count += 1;
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return b.lastDate.localeCompare(a.lastDate);
+    });
+  }, [historicalExpenses]);
+
+  // Filtrar sugerencias según lo que escribe el usuario
+  const matchingSuggestions = useMemo<ExpenseSuggestion[]>(() => {
+    const q = normalizeText(description.trim());
+    if (!q) {
+      // Si el campo está vacío, mostrar los 5 gastos más frecuentes
+      return allSuggestions.slice(0, 5);
+    }
+    return allSuggestions
+      .filter((s) => {
+        const normDesc = normalizeText(s.description);
+        const normCat = normalizeText(s.category_name);
+        const normSub = normalizeText(s.subcategory_name || '');
+        return normDesc.includes(q) || normCat.includes(q) || normSub.includes(q);
+      })
+      .slice(0, 6);
+  }, [allSuggestions, description]);
+
+  const applySuggestion = (suggestion: ExpenseSuggestion, includeAmount = false) => {
+    setDescription(suggestion.description);
+    // Verificar que la categoría aún exista
+    const categoryExists = categories.some((c) => c.id === suggestion.category_id);
+    if (categoryExists) {
+      setCategoryId(suggestion.category_id);
+      const subExists = subcategories.some(
+        (s) =>
+          s.id === suggestion.subcategory_id &&
+          s.category_id === suggestion.category_id
+      );
+      setSubcategoryId(subExists ? suggestion.subcategory_id : '');
+    }
+
+    if (includeAmount && suggestion.lastAmountUsd > 0) {
+      if (inputCurrency === 'USD') {
+        setRawAmount(suggestion.lastAmountUsd.toFixed(2));
+      } else if (inputCurrency === 'VES' && activeUsdRate > 0) {
+        setRawAmount((suggestion.lastAmountUsd * activeUsdRate).toFixed(2));
+      } else if (inputCurrency === 'EUR' && activeUsdRate > 0 && activeEurRate > 0) {
+        setRawAmount(
+          ((suggestion.lastAmountUsd * activeUsdRate) / activeEurRate).toFixed(2)
+        );
+      }
+    } else {
+      // Enfocar el campo de monto para que el usuario solo escriba el valor
+      setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 10);
+    }
+
+    setShowSuggestions(false);
+    setHighlightedIndex(-1);
+  };
 
   // Seleccionar la primera categoría por defecto cuando carguen
   useEffect(() => {
@@ -59,11 +208,6 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     () => subcategories.filter((s) => s.category_id === categoryId),
     [subcategories, categoryId]
   );
-
-  // Al cambiar de categoría padre, resetear la subcategoría seleccionada
-  useEffect(() => {
-    setSubcategoryId('');
-  }, [categoryId]);
 
   // Ajustar la fecha sugerida si el usuario navega a otro mes distinto al actual
   useEffect(() => {
@@ -196,6 +340,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
       });
       setRawAmount('');
       setDescription('');
+      setShowSuggestions(false);
+      loadHistoryForAutocomplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar el gasto');
     } finally {
@@ -253,19 +399,119 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
-        {/* Concepto / Descripción */}
-        <div className="sm:col-span-3">
+        {/* Concepto / Descripción con Autocompletado Inteligente */}
+        <div className="sm:col-span-3 relative" ref={suggestionContainerRef}>
           <label className="block text-xs font-medium text-slate-500 mb-1">
             Descripción / Concepto
           </label>
           <input
             type="text"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              setShowSuggestions(true);
+              setHighlightedIndex(-1);
+            }}
+            onKeyDown={(e) => {
+              if (!showSuggestions || matchingSuggestions.length === 0) return;
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHighlightedIndex((prev) =>
+                  prev < matchingSuggestions.length - 1 ? prev + 1 : 0
+                );
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHighlightedIndex((prev) =>
+                  prev > 0 ? prev - 1 : matchingSuggestions.length - 1
+                );
+              } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                e.preventDefault();
+                applySuggestion(matchingSuggestions[highlightedIndex], false);
+              } else if (e.key === 'Escape') {
+                setShowSuggestions(false);
+              }
+            }}
             placeholder="Ej: Pollo y carne, Verdulería..."
+            autoComplete="off"
             required
             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
+
+          {/* Menú flotante de sugerencias de gastos previos */}
+          {showSuggestions && matchingSuggestions.length > 0 && (
+            <div className="absolute left-0 top-full mt-1.5 w-full sm:w-84 bg-white rounded-2xl border border-slate-200 shadow-lg z-30 overflow-hidden">
+              <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span className="inline-flex items-center gap-1 font-medium text-indigo-600">
+                  <Sparkles className="w-3 h-3" />
+                  {description.trim()
+                    ? 'Sugerencias de tu historial'
+                    : 'Gastos frecuentes'}
+                </span>
+                <span>Clic para autocompletar</span>
+              </div>
+              <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                {matchingSuggestions.map((item, idx) => {
+                  const isHighlighted = idx === highlightedIndex;
+                  return (
+                    <div
+                      key={`${item.description}-${idx}`}
+                      onClick={() => applySuggestion(item, false)}
+                      className={`px-3 py-2 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                        isHighlighted ? 'bg-indigo-50/90' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-slate-800 truncate">
+                            {item.description}
+                          </span>
+                          {item.count > 1 && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-500 font-medium shrink-0">
+                              {item.count}x
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5 text-[11px]">
+                          <span
+                            className="inline-flex items-center gap-1 font-medium truncate"
+                            style={{ color: item.category_color }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: item.category_color }}
+                            />
+                            {item.category_name}
+                          </span>
+                          {item.subcategory_name && (
+                            <>
+                              <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="text-slate-600 font-medium truncate">
+                                {item.subcategory_name}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botón rápido opcional para rellenar también el último monto */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          applySuggestion(item, true);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold shrink-0 transition-colors cursor-pointer"
+                        title="Autocompletar también con este último monto"
+                      >
+                        Usar {formatCurrency(item.lastAmountUsd)}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Monto (en USD, EUR o Bs.) */}
@@ -274,6 +520,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
             Monto ({currencySymbol})
           </label>
           <input
+            ref={amountInputRef}
             type="number"
             step="0.01"
             min="0.01"
@@ -299,7 +546,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
           <select
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setSubcategoryId('');
+            }}
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {categories.map((cat) => (
