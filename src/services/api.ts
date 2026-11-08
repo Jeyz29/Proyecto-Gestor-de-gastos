@@ -180,9 +180,10 @@ export const api = {
   },
 
   // ---- Gastos ----
-  async getExpenses(month: string): Promise<Expense[]> {
-    const res = await fetch(`${API_BASE}/expenses?month=${encodeURIComponent(month)}`);
-    if (!res.ok) throw new Error('Error al cargar los gastos del mes');
+  async getExpenses(month?: string): Promise<Expense[]> {
+    const query = month ? `?month=${encodeURIComponent(month)}` : '';
+    const res = await fetch(`${API_BASE}/expenses${query}`);
+    if (!res.ok) throw new Error('Error al cargar los gastos');
     return res.json();
   },
 

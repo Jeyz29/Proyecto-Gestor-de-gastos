@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Trash2,
   Receipt,
@@ -8,6 +8,8 @@ import {
   X,
   ArrowLeftRight,
   CalendarClock,
+  Search,
+  Globe,
 } from 'lucide-react';
 import type {
   Expense,
@@ -21,8 +23,16 @@ import {
   formatEuros,
   formatBolivares,
   formatShortDate,
+  formatMonthLabel,
   getTodayISO,
 } from '../../utils/formatters.ts';
+
+// Normaliza texto quitando tildes y pasando a minúsculas para búsquedas flexibles
+const normalizeText = (text: string): string =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -43,6 +53,11 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   onUpdateExpense,
   onDeleteExpense,
 }) => {
+  // Estado del buscador y alcance global ("Todos los meses")
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchAllMonths, setSearchAllMonths] = useState<boolean>(false);
+  const [allMonthsExpenses, setAllMonthsExpenses] = useState<Expense[]>([]);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState<string>('');
   const [editCurrency, setEditCurrency] = useState<'USD' | 'EUR' | 'VES'>('USD');
@@ -54,7 +69,85 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   const [editEurRate, setEditEurRate] = useState<number>(0);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
+
+  const fetchAllExpenses = useCallback(async () => {
+    try {
+      const data = await api.getExpenses();
+      setAllMonthsExpenses(data);
+    } catch (err) {
+      console.error('Error al cargar todos los meses para búsqueda:', err);
+    }
+  }, []);
+
+  // Precargar en segundo plano para que alternar "Buscar en todos los meses" sea instantáneo y sin saltos de scroll
+  useEffect(() => {
+    fetchAllExpenses();
+  }, [expenses, fetchAllExpenses]);
+
+  // Fuente de datos activa (mes actual vs todos los meses, sin vaciar la lista mientras carga)
+  const sourceExpenses =
+    searchAllMonths && allMonthsExpenses.length > 0 ? allMonthsExpenses : expenses;
+
+  // Filtrado instantáneo por descripción, categoría, subcategoría, monto o fecha
+  const displayedExpenses = useMemo(() => {
+    const q = normalizeText(searchQuery.trim());
+    if (!q) return sourceExpenses;
+
+    return sourceExpenses.filter((exp) => {
+      const desc = normalizeText(exp.description || '');
+      const cat = normalizeText(exp.category_name || '');
+      const sub = normalizeText(exp.subcategory_name || '');
+      const dateIso = normalizeText(exp.expense_date || '');
+      const dateShort = normalizeText(formatShortDate(exp.expense_date));
+      const monthLabel = normalizeText(formatMonthLabel(exp.expense_date.slice(0, 7)));
+      const amountUsd = exp.amount.toFixed(2);
+      const amountVes = exp.amount_ves > 0 ? exp.amount_ves.toFixed(2) : '';
+      const amountEur = exp.amount_eur > 0 ? exp.amount_eur.toFixed(2) : '';
+
+      return (
+        desc.includes(q) ||
+        cat.includes(q) ||
+        sub.includes(q) ||
+        dateIso.includes(q) ||
+        dateShort.includes(q) ||
+        monthLabel.includes(q) ||
+        amountUsd.includes(q) ||
+        amountVes.includes(q) ||
+        amountEur.includes(q)
+      );
+    });
+  }, [sourceExpenses, searchQuery]);
+
+  // Subtotales de los movimientos filtrados
+  const filteredTotals = useMemo(() => {
+    let usd = 0;
+    let eur = 0;
+    let ves = 0;
+
+    for (const exp of displayedExpenses) {
+      usd += exp.amount;
+      const itemVes =
+        exp.amount_ves > 0
+          ? exp.amount_ves
+          : currentBcvRate > 0
+          ? exp.amount * currentBcvRate
+          : 0;
+      ves += itemVes;
+
+      const rateEurUsed =
+        exp.exchange_rate_eur > 0 ? exp.exchange_rate_eur : currentBcvEurRate;
+      const itemEur =
+        exp.amount_eur > 0
+          ? exp.amount_eur
+          : rateEurUsed > 0 && itemVes > 0
+          ? itemVes / rateEurUsed
+          : 0;
+      eur += itemEur;
+    }
+
+    return { usd, eur, ves };
+  }, [displayedExpenses, currentBcvRate, currentBcvEurRate]);
 
   const availableSubcategories = useMemo(
     () => subcategories.filter((s) => s.category_id === editCategoryId),
@@ -73,12 +166,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     setEditEurRate(
       expense.exchange_rate_eur > 0 ? expense.exchange_rate_eur : currentBcvEurRate
     );
-    setError(null);
+    setError('');
   };
 
   const cancelEditing = () => {
     setEditingId(null);
-    setError(null);
+    setError('');
   };
 
   // Cuando el usuario cambia la fecha en la edición, consultar la tasa histórica del BCV de ese día
@@ -140,7 +233,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     }
 
     setSaving(true);
-    setError(null);
+    setError('');
     try {
       await onUpdateExpense(id, {
         description: editDescription.trim(),
@@ -154,6 +247,9 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         expense_date: editDate,
       });
       setEditingId(null);
+      if (searchAllMonths) {
+        await fetchAllExpenses();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al actualizar el movimiento');
     } finally {
@@ -161,29 +257,118 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     }
   };
 
-  if (expenses.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-xs">
-        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-          <Receipt className="w-6 h-6" />
-        </div>
-        <h3 className="text-sm font-semibold text-slate-700">Sin gastos registrados</h3>
-        <p className="text-xs text-slate-400 mt-1">
-          Usa el formulario superior para añadir tu primer gasto de este mes.
-        </p>
-      </div>
-    );
-  }
+  const isFiltering = searchQuery.trim().length > 0 || searchAllMonths;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-800">Detalle de Movimientos</h3>
-        <span className="text-xs text-slate-400">{expenses.length} registros</span>
+      {/* Cabecera con título y buscador rápido (altura fija sin saltos de layout) */}
+      <div className="px-6 py-4 border-b border-slate-100 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-800">Detalle de Movimientos</h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+              {isFiltering
+                ? `${displayedExpenses.length} de ${sourceExpenses.length}`
+                : `${expenses.length} registros`}
+            </span>
+            {isFiltering && displayedExpenses.length > 0 && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">
+                Subtotal: <strong>{formatCurrency(filteredTotals.usd)}</strong>
+                {filteredTotals.eur > 0 ? ` · ${formatEuros(filteredTotals.eur)}` : ''}
+                {filteredTotals.ves > 0 ? ` · ${formatBolivares(filteredTotals.ves)}` : ''}
+              </span>
+            )}
+          </div>
+
+          {/* Botón para alternar búsqueda en todos los meses */}
+          <button
+            type="button"
+            onClick={() => setSearchAllMonths((prev) => !prev)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+              searchAllMonths
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+            }`}
+            title="Buscar movimientos en todo tu historial de meses"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>Buscar en todos los meses</span>
+          </button>
+        </div>
+
+        {/* Barra de búsqueda */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              searchAllMonths
+                ? 'Buscar en todos los meses por descripción, categoría, subcategoría, monto o fecha...'
+                : 'Buscar en este mes por descripción, categoría, subcategoría, monto o fecha...'
+            }
+            className="w-full pl-9 pr-9 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="p-1 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+              title="Limpiar búsqueda"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
+      {displayedExpenses.length === 0 ? (
+        <div className="p-12 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <Receipt className="w-6 h-6" />
+          </div>
+          {searchQuery.trim() ? (
+            <>
+              <h3 className="text-sm font-semibold text-slate-700">
+                No se encontraron movimientos para "{searchQuery}"
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                {!searchAllMonths
+                  ? 'Prueba buscando con otro término o activa "Buscar en todos los meses".'
+                  : 'No hay coincidencias en ningún mes registrado.'}
+              </p>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition-colors cursor-pointer"
+                >
+                  Limpiar filtro
+                </button>
+                {!searchAllMonths && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchAllMonths(true)}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-medium text-white transition-colors cursor-pointer"
+                  >
+                    Buscar en todos los meses
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-slate-700">Sin gastos registrados</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Usa el formulario superior para añadir tu primer gasto de este mes o activa "Buscar en todos los meses".
+              </p>
+            </>
+          )}
+        </div>
+      ) : (
       <div className="divide-y divide-slate-100">
-        {expenses.map((expense) => {
+        {displayedExpenses.map((expense) => {
           const isEditing = editingId === expense.id;
 
           if (isEditing) {
@@ -429,7 +614,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             >
               <div className="flex items-center gap-4 min-w-0">
                 {/* Fecha corta */}
-                <div className="text-xs font-medium text-slate-400 w-14 shrink-0">
+                <div
+                  className="text-xs font-medium text-slate-400 w-14 shrink-0"
+                  title={expense.expense_date}
+                >
                   {formatShortDate(expense.expense_date)}
                 </div>
 
@@ -505,7 +693,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onDeleteExpense(expense.id)}
+                    onClick={async () => {
+                      await onDeleteExpense(expense.id);
+                      if (searchAllMonths) {
+                        await fetchAllExpenses();
+                      }
+                    }}
                     className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                     title="Eliminar movimiento"
                   >
@@ -517,6 +710,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
           );
         })}
       </div>
+      )}
     </div>
   );
 };
