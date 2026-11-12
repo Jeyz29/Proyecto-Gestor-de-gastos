@@ -12,8 +12,13 @@ import {
   BarChart3,
   Repeat,
   Calendar,
+  LogOut,
+  Sparkles,
 } from 'lucide-react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase, DEMO_CREDENTIALS } from './services/supabaseClient.ts';
 import { api } from './services/api.ts';
+import { AuthView } from './components/auth/AuthView.tsx';
 import type {
   BcvRateInfo,
   Category,
@@ -43,6 +48,9 @@ import { SubscriptionsView } from './components/subscriptions/SubscriptionsView.
 import { CategoryManagerModal } from './components/categories/CategoryManagerModal.tsx';
 
 export const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+
   const [activeTab, setActiveTab] = useState<
     'monthly' | 'subscriptions' | 'comparison' | 'annual'
   >('monthly');
@@ -71,6 +79,25 @@ export const App: React.FC = () => {
   const [isEditingRate, setIsEditingRate] = useState<boolean>(false);
   const [manualUsdInput, setManualUsdInput] = useState<string>('');
   const [manualEurInput, setManualEurInput] = useState<string>('');
+
+  // Escuchar cambios de sesión de Supabase Auth
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setAuthChecking(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setAuthChecking(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const loadBcvRate = useCallback(async (forceRefresh = false) => {
     setRefreshingBcv(true);
@@ -121,15 +148,17 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!session?.user?.id) return;
     loadBcvRate(false);
     loadCategoriesAndSubs();
     loadAnalytics();
-  }, [loadBcvRate, loadCategoriesAndSubs, loadAnalytics]);
+  }, [session?.user?.id, loadBcvRate, loadCategoriesAndSubs, loadAnalytics]);
 
   useEffect(() => {
+    if (!session?.user?.id) return;
     loadExpenses(selectedMonth);
     setActiveCategoryFilter(null);
-  }, [selectedMonth, loadExpenses]);
+  }, [session?.user?.id, selectedMonth, loadExpenses]);
 
   const handleSaveManualRate = async () => {
     const parsedUsd = parseFloat(manualUsdInput);
@@ -479,6 +508,36 @@ export const App: React.FC = () => {
     return { month: latestMonth, count: totalCount };
   }, [analyticsHistory, selectedMonth]);
 
+  const isDemoUser = session?.user?.email === DEMO_CREDENTIALS.email;
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setCategories([]);
+    setSubcategories([]);
+    setExpenses([]);
+    setSubscriptions([]);
+    setAnalyticsHistory([]);
+  };
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center mx-auto animate-pulse">
+            <WalletCards className="w-5 h-5" />
+          </div>
+          <p className="text-xs font-medium text-slate-500">
+            Verificando sesión segura en Supabase...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <AuthView />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-12">
       {/* Barra Superior */}
@@ -490,11 +549,19 @@ export const App: React.FC = () => {
               <WalletCards className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-slate-800 leading-tight">
-                Mis Gastos
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-slate-800 leading-tight">
+                  Mis Gastos
+                </h1>
+                {isDemoUser && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                    <Sparkles className="w-3 h-3" />
+                    Modo Demo
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-slate-400 hidden sm:inline">
-                Base USD ($) + Relación BCV (€ / Bs.)
+                {session.user.email}
               </span>
             </div>
           </div>
@@ -520,7 +587,7 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Indicador Tasas BCV ($ y €) + Botón Categorías */}
+          {/* Indicador Tasas BCV ($ y €) + Botón Categorías + Cerrar Sesión */}
           <div className="flex items-center gap-2">
             {/* Widget de Tasas BCV */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs">
@@ -596,10 +663,20 @@ export const App: React.FC = () => {
             {/* Botón Categorías y Subcategorías */}
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs sm:text-sm font-medium text-slate-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs sm:text-sm font-medium text-slate-700 transition-colors cursor-pointer"
             >
               <Tags className="w-4 h-4 text-indigo-600" />
               <span className="hidden sm:inline">Categorías</span>
+            </button>
+
+            {/* Botón Cerrar Sesión */}
+            <button
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700 text-xs sm:text-sm font-medium text-slate-600 transition-colors cursor-pointer"
+              title={`Cerrar sesión (${session.user.email})`}
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:inline">Salir</span>
             </button>
           </div>
         </div>
@@ -665,7 +742,7 @@ export const App: React.FC = () => {
         {backendError && (
           <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-4">
             <span>
-              <strong>El servidor de la base de datos SQLite no está encendido.</strong> Si levantaste solo Vite (`npx vite`), recuerda cerrar y usar <code className="bg-red-100 px-1.5 py-0.5 rounded font-mono">npm run dev</code> para encender tanto la base de datos como la interfaz.
+              <strong>No se pudo conectar con Supabase.</strong> Verifica tu conexión a internet o las variables de entorno <code className="bg-red-100 px-1.5 py-0.5 rounded font-mono">VITE_SUPABASE_URL</code> y <code className="bg-red-100 px-1.5 py-0.5 rounded font-mono">VITE_SUPABASE_PUBLISHABLE_KEY</code>.
             </span>
           </div>
         )}
