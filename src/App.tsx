@@ -73,6 +73,13 @@ export const App: React.FC = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('g_budget_sidebar_collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('g_budget_sidebar_collapsed', String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   // Estado de las tasas BCV (Dólar y Euro)
   const [bcvInfo, setBcvInfo] = useState<BcvRateInfo>({
@@ -590,84 +597,129 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface text-on-surface flex">
       {/* Barra Lateral Izquierda Fija (Desktop) - Estilo Stitch ClearLedger Direct */}
-      <aside className="hidden lg:flex w-64 shrink-0 border-r border-slate-200/60 bg-surface flex-col fixed inset-y-0 left-0 z-40">
-        <div className="p-6 flex flex-col h-full">
-          {/* Brand Header: G-Budget */}
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-white shadow-xs">
-              <WalletCards className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-tight text-on-surface leading-none">
-                G-Budget
+      <aside
+        className={`hidden lg:flex ${
+          isSidebarCollapsed ? 'w-28' : 'w-64'
+        } shrink-0 border-r border-slate-200/60 bg-surface flex-col fixed inset-y-0 left-0 z-40 transition-all duration-200 ease-in-out`}
+      >
+        <div className={`${isSidebarCollapsed ? 'px-2.5 py-6' : 'p-6'} flex flex-col h-full transition-all duration-200`}>
+          {/* Brand Header: G-Budget / G-B con botón para desplegar/minimizar al mismo nivel */}
+          <div className="flex items-center justify-between gap-1 mb-8 px-0.5">
+            <div className={`flex items-center ${isSidebarCollapsed ? 'gap-1.5' : 'gap-3'} min-w-0 shrink-0`}>
+              <div
+                className={`${
+                  isSidebarCollapsed ? 'w-7 h-7 rounded-md' : 'w-9 h-9 rounded-lg'
+                } bg-primary flex items-center justify-center text-white shadow-xs shrink-0 ${
+                  isSidebarCollapsed ? 'cursor-pointer hover:opacity-90' : ''
+                }`}
+                onClick={() => isSidebarCollapsed && setIsSidebarCollapsed(false)}
+                title={isSidebarCollapsed ? 'G-B - Clic para desplegar' : undefined}
+              >
+                <WalletCards className={isSidebarCollapsed ? 'w-4 h-4' : 'w-5 h-5'} />
+              </div>
+              <h1
+                className={`font-extrabold tracking-tight text-on-surface leading-none ${
+                  isSidebarCollapsed ? 'text-xs font-black shrink-0 whitespace-nowrap' : 'text-lg truncate'
+                }`}
+              >
+                {isSidebarCollapsed ? 'G-B' : 'G-Budget'}
               </h1>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-secondary font-semibold mt-0.5">
-                ClearLedger Direct
-              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-1 rounded-lg text-slate-400 hover:text-on-surface hover:bg-slate-200/60 transition-colors cursor-pointer shrink-0"
+              title={isSidebarCollapsed ? 'Desplegar barra lateral' : 'Minimizar barra lateral'}
+              aria-label={isSidebarCollapsed ? 'Desplegar barra lateral' : 'Minimizar barra lateral'}
+            >
+              {isSidebarCollapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
+              )}
+            </button>
           </div>
 
           {/* Navegación Principal */}
           <nav className="space-y-1 flex-1">
-            <p className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
-              Módulos Contables
-            </p>
+            {!isSidebarCollapsed ? (
+              <p className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
+                Módulos Contables
+              </p>
+            ) : (
+              <div className="my-1 border-t border-slate-200/40" />
+            )}
+
             <button
               type="button"
               onClick={() => setActiveTab('monthly')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+              className={`w-full flex items-center ${
+                isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+              } rounded-lg text-sm transition-all cursor-pointer ${
                 activeTab === 'monthly'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
+              title={isSidebarCollapsed ? 'Gastos del Mes' : undefined}
             >
               <ListPlus
-                className={`w-4 h-4 ${
+                className={`w-4 h-4 shrink-0 ${
                   activeTab === 'monthly' ? 'text-secondary' : 'text-slate-500'
                 }`}
               />
-              <span>Gastos del Mes</span>
+              {!isSidebarCollapsed && <span>Gastos del Mes</span>}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('subscriptions')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+              className={`w-full flex items-center ${
+                isSidebarCollapsed
+                  ? 'justify-center px-2 py-2.5 relative'
+                  : 'justify-between px-3 py-2.5'
+              } rounded-lg text-sm transition-all cursor-pointer ${
                 activeTab === 'subscriptions'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
+              title={isSidebarCollapsed ? `Suscripciones (${subscriptions.length})` : undefined}
             >
-              <span className="flex items-center gap-3">
+              <span className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <Repeat
-                  className={`w-4 h-4 ${
+                  className={`w-4 h-4 shrink-0 ${
                     activeTab === 'subscriptions' ? 'text-secondary' : 'text-slate-500'
                   }`}
                 />
-                <span>Suscripciones</span>
+                {!isSidebarCollapsed && <span>Suscripciones</span>}
               </span>
-              {subscriptions.length > 0 && (
-                <span className="px-1.5 py-0.2 bg-secondary-container/60 text-on-secondary-container rounded-full text-[11px] font-mono font-bold">
-                  {subscriptions.length}
-                </span>
-              )}
+              {subscriptions.length > 0 &&
+                (isSidebarCollapsed ? (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-secondary" />
+                ) : (
+                  <span className="px-1.5 py-0.2 bg-secondary-container/60 text-on-secondary-container rounded-full text-[11px] font-mono font-bold">
+                    {subscriptions.length}
+                  </span>
+                ))}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('comparison')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+              className={`w-full flex items-center ${
+                isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+              } rounded-lg text-sm transition-all cursor-pointer ${
                 activeTab === 'comparison'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
+              title={isSidebarCollapsed ? 'Comparativa Mensual' : undefined}
             >
               <BarChart3
-                className={`w-4 h-4 ${
+                className={`w-4 h-4 shrink-0 ${
                   activeTab === 'comparison' ? 'text-secondary' : 'text-slate-500'
                 }`}
               />
-              <span>Comparativa Mensual</span>
+              {!isSidebarCollapsed && <span>Comparativa Mensual</span>}
             </button>
 
             <button
@@ -676,53 +728,80 @@ export const App: React.FC = () => {
                 setSelectedYear(Number(selectedMonth.slice(0, 4)));
                 setActiveTab('annual');
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+              className={`w-full flex items-center ${
+                isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+              } rounded-lg text-sm transition-all cursor-pointer ${
                 activeTab === 'annual'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
               }`}
+              title={isSidebarCollapsed ? 'Resumen Anual' : undefined}
             >
               <Calendar
-                className={`w-4 h-4 ${
+                className={`w-4 h-4 shrink-0 ${
                   activeTab === 'annual' ? 'text-secondary' : 'text-slate-500'
                 }`}
               />
-              <span>Resumen Anual</span>
+              {!isSidebarCollapsed && <span>Resumen Anual</span>}
             </button>
 
             <div className="pt-4">
-              <p className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
-                Configuración
-              </p>
+              {!isSidebarCollapsed ? (
+                <p className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
+                  Configuración
+                </p>
+              ) : (
+                <div className="my-2 border-t border-slate-200/40" />
+              )}
               <button
                 type="button"
                 onClick={() => setIsCategoryModalOpen(true)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 font-medium transition-all cursor-pointer"
+                className={`w-full flex items-center ${
+                  isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+                } rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 font-medium transition-all cursor-pointer`}
+                title={isSidebarCollapsed ? 'Categorías y Subcategorías' : undefined}
               >
-                <Tags className="w-4 h-4 text-secondary" />
-                <span>Categorías y Subcategorías</span>
+                <Tags className="w-4 h-4 shrink-0 text-secondary" />
+                {!isSidebarCollapsed && <span>Categorías y Subcategorías</span>}
               </button>
             </div>
           </nav>
 
           {/* Tarjeta inferior de seguridad y estado */}
           <div className="mt-auto pt-4 border-t border-slate-200/60 space-y-3">
-            <div className="p-3.5 rounded-xl bg-surface-container-low">
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck className="w-4 h-4 text-secondary" />
-                <span className="text-xs font-bold text-on-surface">
-                  Fiscal Safe · RLS Activo
-                </span>
+            {!isSidebarCollapsed ? (
+              <div className="p-3.5 rounded-xl bg-surface-container-low">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="w-4 h-4 text-secondary" />
+                  <span className="text-xs font-bold text-on-surface">
+                    Fiscal Safe · RLS Activo
+                  </span>
+                </div>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Libro contable protegido en Supabase con tasas históricas BCV.
+                </p>
               </div>
-              <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                Libro contable protegido en Supabase con tasas históricas BCV.
-              </p>
-            </div>
+            ) : (
+              <div
+                className="flex justify-center"
+                title="Fiscal Safe · RLS Activo (Protegido en Supabase con tasas BCV)"
+              >
+                <div className="p-2 rounded-lg bg-surface-container-low text-secondary">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+              </div>
+            )}
 
-            <div className="px-2 flex items-center justify-between text-xs text-on-surface-variant">
-              <span className="truncate max-w-40" title={session.user.email}>
-                {session.user.email}
-              </span>
+            <div
+              className={`flex items-center ${
+                isSidebarCollapsed ? 'justify-center' : 'justify-between px-2'
+              } text-xs text-on-surface-variant`}
+            >
+              {!isSidebarCollapsed && (
+                <span className="truncate max-w-40" title={session.user.email}>
+                  {session.user.email}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleSignOut}
@@ -737,7 +816,11 @@ export const App: React.FC = () => {
       </aside>
 
       {/* Contenedor Derecho Principal */}
-      <div className="flex-1 lg:pl-64 min-w-0 flex flex-col">
+      <div
+        className={`flex-1 ${
+          isSidebarCollapsed ? 'lg:pl-28' : 'lg:pl-64'
+        } min-w-0 flex flex-col transition-all duration-200 ease-in-out`}
+      >
         {/* Top Header Fijo */}
         <header className="sticky top-0 z-30 h-16 bg-surface/85 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-8 flex items-center justify-between gap-3">
           {/* Izquierda: Logo móvil + Selector de Período Mensual */}
@@ -875,33 +958,30 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('monthly')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
-              activeTab === 'monthly'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'monthly'
                 ? 'bg-primary text-white'
                 : 'bg-surface-container-low text-on-surface-variant'
-            }`}
+              }`}
           >
             Gastos del Mes
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('subscriptions')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
-              activeTab === 'subscriptions'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'subscriptions'
                 ? 'bg-primary text-white'
                 : 'bg-surface-container-low text-on-surface-variant'
-            }`}
+              }`}
           >
             Suscripciones ({subscriptions.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('comparison')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
-              activeTab === 'comparison'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'comparison'
                 ? 'bg-primary text-white'
                 : 'bg-surface-container-low text-on-surface-variant'
-            }`}
+              }`}
           >
             Comparativa
           </button>
@@ -911,11 +991,10 @@ export const App: React.FC = () => {
               setSelectedYear(Number(selectedMonth.slice(0, 4)));
               setActiveTab('annual');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
-              activeTab === 'annual'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'annual'
                 ? 'bg-primary text-white'
                 : 'bg-surface-container-low text-on-surface-variant'
-            }`}
+              }`}
           >
             Resumen Anual
           </button>
