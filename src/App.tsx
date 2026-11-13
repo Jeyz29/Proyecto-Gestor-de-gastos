@@ -14,6 +14,10 @@ import {
   Calendar,
   LogOut,
   Sparkles,
+  Download,
+  ShieldCheck,
+  Plus,
+  ArrowUpRight,
 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, DEMO_CREDENTIALS } from './services/supabaseClient.ts';
@@ -35,6 +39,7 @@ import type {
 } from './types/index.ts';
 import {
   formatMonthLabel,
+  formatCurrency,
   formatBolivares,
   getCurrentYearMonth,
   shiftMonth,
@@ -67,6 +72,7 @@ export const App: React.FC = () => {
   const [backendError, setBackendError] = useState<boolean>(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
 
   // Estado de las tasas BCV (Dólar y Euro)
   const [bcvInfo, setBcvInfo] = useState<BcvRateInfo>({
@@ -158,6 +164,7 @@ export const App: React.FC = () => {
     if (!session?.user?.id) return;
     loadExpenses(selectedMonth);
     setActiveCategoryFilter(null);
+    setSelectedDateFilter(null);
   }, [session?.user?.id, selectedMonth, loadExpenses]);
 
   const handleSaveManualRate = async () => {
@@ -245,7 +252,6 @@ export const App: React.FC = () => {
     setSubscriptions((prev) => prev.filter((s) => s.id !== id));
   };
 
-  // Determinar si las suscripciones anuales están globalmente activadas en el gasto mensual
   const includeAnnualInMonthlyGlobal = useMemo(() => {
     const annuals = subscriptions.filter((s) => s.billing_cycle === 'annual');
     if (annuals.length === 0) return false;
@@ -287,7 +293,6 @@ export const App: React.FC = () => {
           .sort((a, b) => b.expense_date.localeCompare(a.expense_date))
       );
     } else {
-      // Si la nueva fecha corresponde a otro mes, quitamos de este mes y vamos al nuevo
       setExpenses((prev) => prev.filter((e) => e.id !== id));
       setSelectedMonth(updated.expense_date.slice(0, 7));
     }
@@ -318,7 +323,6 @@ export const App: React.FC = () => {
     }, 0);
   }, [subscriptions]);
 
-  // Cálculos del mes actual (Gastos puntuales + Suscripciones marcadas para sumarse al mes)
   const baseExpensesUsd = useMemo(
     () => expenses.reduce((sum, item) => sum + item.amount, 0),
     [expenses]
@@ -360,7 +364,7 @@ export const App: React.FC = () => {
     return punctualEur + subsEur;
   }, [expenses, bcvInfo.rate, bcvInfo.eurRate, subscriptionsMonthlyUsd]);
 
-  // Desglose por Categoría y Subcategoría (incluyendo las suscripciones activas en el mes)
+  // Desglose por Categoría y Subcategoría
   const breakdown = useMemo<CategoryBreakdown[]>(() => {
     const map = new Map<
       string,
@@ -420,7 +424,6 @@ export const App: React.FC = () => {
       }
     };
 
-    // 1. Gastos puntuales del mes
     for (const exp of expenses) {
       const ves =
         exp.amount_ves > 0
@@ -447,7 +450,6 @@ export const App: React.FC = () => {
       });
     }
 
-    // 2. Suscripciones que el usuario eligió incluir en el gasto mensual
     for (const sub of subscriptions) {
       if (sub.include_in_monthly !== 1) continue;
       const monthlyUsd =
@@ -492,7 +494,10 @@ export const App: React.FC = () => {
     return expenses.filter((e) => e.category_id === activeCategoryFilter);
   }, [expenses, activeCategoryFilter]);
 
-  // Detectar el último mes que sí tiene gastos registrados (por si hoy cambió el mes y está vacío)
+  const activeDaysCount = useMemo(() => {
+    return new Set(expenses.map((e) => e.expense_date)).size;
+  }, [expenses]);
+
   const latestMonthWithExpenses = useMemo(() => {
     if (analyticsHistory.length === 0) return null;
     let latestMonth = '';
@@ -508,6 +513,50 @@ export const App: React.FC = () => {
     return { month: latestMonth, count: totalCount };
   }, [analyticsHistory, selectedMonth]);
 
+  const handleExportCsv = () => {
+    if (expenses.length === 0) return;
+    const headers = [
+      'Fecha',
+      'Concepto',
+      'Categoria',
+      'Subcategoria',
+      'Monto_USD',
+      'Monto_EUR',
+      'Monto_VES',
+      'Tasa_BCV_USD',
+      'Tasa_BCV_EUR',
+    ];
+    const rows = expenses.map((e) => [
+      e.expense_date,
+      `"${(e.description || '').replace(/"/g, '""')}"`,
+      `"${(e.category_name || '').replace(/"/g, '""')}"`,
+      `"${(e.subcategory_name || 'General').replace(/"/g, '""')}"`,
+      e.amount.toFixed(2),
+      (e.amount_eur || 0).toFixed(2),
+      (e.amount_ves || 0).toFixed(2),
+      (e.exchange_rate || 0).toFixed(4),
+      (e.exchange_rate_eur || 0).toFixed(4),
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `g-budget-${selectedMonth}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleFocusNewExpense = () => {
+    const input = document.getElementById('expense-description-input');
+    if (input) {
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => input.focus(), 250);
+    }
+  };
+
   const isDemoUser = session?.user?.email === DEMO_CREDENTIALS.email;
 
   const handleSignOut = async () => {
@@ -521,13 +570,13 @@ export const App: React.FC = () => {
 
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-surface flex items-center justify-center p-6">
         <div className="text-center space-y-2">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center mx-auto animate-pulse">
+          <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center mx-auto animate-pulse">
             <WalletCards className="w-5 h-5" />
           </div>
-          <p className="text-xs font-medium text-slate-500">
-            Verificando sesión segura en Supabase...
+          <p className="text-xs font-mono text-on-surface-variant">
+            Verificando sesión segura en G-Budget...
           </p>
         </div>
       </div>
@@ -539,81 +588,224 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-12">
-      {/* Barra Superior */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
-          {/* Logo y Título */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
+    <div className="min-h-screen bg-surface text-on-surface flex">
+      {/* Barra Lateral Izquierda Fija (Desktop) - Estilo Stitch ClearLedger Direct */}
+      <aside className="hidden lg:flex w-64 shrink-0 border-r border-slate-200/60 bg-surface flex-col fixed inset-y-0 left-0 z-40">
+        <div className="p-6 flex flex-col h-full">
+          {/* Brand Header: G-Budget */}
+          <div className="flex items-center gap-3 mb-8 px-2">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-white shadow-xs">
               <WalletCards className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-slate-800 leading-tight">
-                  Mis Gastos
-                </h1>
-                {isDemoUser && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                    <Sparkles className="w-3 h-3" />
-                    Modo Demo
-                  </span>
-                )}
-              </div>
-              <span className="text-xs text-slate-400 hidden sm:inline">
-                {session.user.email}
-              </span>
+              <h1 className="text-lg font-extrabold tracking-tight text-on-surface leading-none">
+                G-Budget
+              </h1>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-secondary font-semibold mt-0.5">
+                ClearLedger Direct
+              </p>
             </div>
           </div>
 
-          {/* Selector de Mes */}
-          <div className="flex items-center bg-slate-100 rounded-xl p-1">
+          {/* Navegación Principal */}
+          <nav className="space-y-1 flex-1">
+            <p className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
+              Módulos Contables
+            </p>
             <button
-              onClick={() => setSelectedMonth((m) => shiftMonth(m, -1))}
-              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer"
-              title="Mes anterior"
+              type="button"
+              onClick={() => setActiveTab('monthly')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+                activeTab === 'monthly'
+                  ? 'bg-surface-container-high text-on-surface font-semibold'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
+              }`}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ListPlus
+                className={`w-4 h-4 ${
+                  activeTab === 'monthly' ? 'text-secondary' : 'text-slate-500'
+                }`}
+              />
+              <span>Gastos del Mes</span>
             </button>
-            <span className="px-3 text-sm font-semibold text-slate-700 min-w-36 text-center">
-              {formatMonthLabel(selectedMonth)}
-            </span>
+
             <button
-              onClick={() => setSelectedMonth((m) => shiftMonth(m, 1))}
-              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer"
-              title="Mes siguiente"
+              type="button"
+              onClick={() => setActiveTab('subscriptions')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+                activeTab === 'subscriptions'
+                  ? 'bg-surface-container-high text-on-surface font-semibold'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
+              }`}
             >
-              <ChevronRight className="w-4 h-4" />
+              <span className="flex items-center gap-3">
+                <Repeat
+                  className={`w-4 h-4 ${
+                    activeTab === 'subscriptions' ? 'text-secondary' : 'text-slate-500'
+                  }`}
+                />
+                <span>Suscripciones</span>
+              </span>
+              {subscriptions.length > 0 && (
+                <span className="px-1.5 py-0.2 bg-secondary-container/60 text-on-secondary-container rounded-full text-[11px] font-mono font-bold">
+                  {subscriptions.length}
+                </span>
+              )}
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('comparison')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+                activeTab === 'comparison'
+                  ? 'bg-surface-container-high text-on-surface font-semibold'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
+              }`}
+            >
+              <BarChart3
+                className={`w-4 h-4 ${
+                  activeTab === 'comparison' ? 'text-secondary' : 'text-slate-500'
+                }`}
+              />
+              <span>Comparativa Mensual</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedYear(Number(selectedMonth.slice(0, 4)));
+                setActiveTab('annual');
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all cursor-pointer ${
+                activeTab === 'annual'
+                  ? 'bg-surface-container-high text-on-surface font-semibold'
+                  : 'text-slate-600 hover:bg-slate-200/50 font-medium'
+              }`}
+            >
+              <Calendar
+                className={`w-4 h-4 ${
+                  activeTab === 'annual' ? 'text-secondary' : 'text-slate-500'
+                }`}
+              />
+              <span>Resumen Anual</span>
+            </button>
+
+            <div className="pt-4">
+              <p className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
+                Configuración
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 font-medium transition-all cursor-pointer"
+              >
+                <Tags className="w-4 h-4 text-secondary" />
+                <span>Categorías y Subcategorías</span>
+              </button>
+            </div>
+          </nav>
+
+          {/* Tarjeta inferior de seguridad y estado */}
+          <div className="mt-auto pt-4 border-t border-slate-200/60 space-y-3">
+            <div className="p-3.5 rounded-xl bg-surface-container-low">
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck className="w-4 h-4 text-secondary" />
+                <span className="text-xs font-bold text-on-surface">
+                  Fiscal Safe · RLS Activo
+                </span>
+              </div>
+              <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                Libro contable protegido en Supabase con tasas históricas BCV.
+              </p>
+            </div>
+
+            <div className="px-2 flex items-center justify-between text-xs text-on-surface-variant">
+              <span className="truncate max-w-40" title={session.user.email}>
+                {session.user.email}
+              </span>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="p-1.5 text-slate-500 hover:text-error hover:bg-error-container/40 rounded-lg transition-colors cursor-pointer"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Contenedor Derecho Principal */}
+      <div className="flex-1 lg:pl-64 min-w-0 flex flex-col">
+        {/* Top Header Fijo */}
+        <header className="sticky top-0 z-30 h-16 bg-surface/85 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-8 flex items-center justify-between gap-3">
+          {/* Izquierda: Logo móvil + Selector de Período Mensual */}
+          <div className="flex items-center gap-3">
+            <div className="flex lg:hidden items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+                <WalletCards className="w-4 h-4" />
+              </div>
+              <span className="font-extrabold text-sm text-on-surface">G-Budget</span>
+            </div>
+
+            {/* Selector de Mes estilo Stitch */}
+            <div className="flex items-center bg-surface-container-low p-1 rounded-xl border border-slate-200/50">
+              <button
+                onClick={() => setSelectedMonth((m) => shiftMonth(m, -1))}
+                className="p-1.5 hover:bg-surface-container-lowest rounded-lg transition-all text-slate-600 cursor-pointer"
+                title="Mes anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-3 text-xs sm:text-sm font-bold text-on-surface min-w-34 text-center">
+                {formatMonthLabel(selectedMonth)}
+              </span>
+              <button
+                onClick={() => setSelectedMonth((m) => shiftMonth(m, 1))}
+                className="p-1.5 hover:bg-surface-container-lowest rounded-lg transition-all text-slate-600 cursor-pointer"
+                title="Mes siguiente"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {isDemoUser && (
+              <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                <Sparkles className="w-3 h-3" />
+                DEMO
+              </span>
+            )}
           </div>
 
-          {/* Indicador Tasas BCV ($ y €) + Botón Categorías + Cerrar Sesión */}
-          <div className="flex items-center gap-2">
-            {/* Widget de Tasas BCV */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs">
-              <span className="font-semibold text-emerald-800">BCV:</span>
+          {/* Derecha: Widget de Tasas BCV + Acciones Móviles */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary-container/35 border border-secondary/20 text-xs">
+              <span className="font-mono font-bold text-secondary hidden sm:inline">
+                BCV:
+              </span>
               {isEditingRate ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-emerald-700 font-medium">$:</span>
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="text-secondary font-bold">$:</span>
                   <input
                     type="number"
                     step="0.01"
                     value={manualUsdInput}
                     onChange={(e) => setManualUsdInput(e.target.value)}
-                    className="w-18 px-1.5 py-0.5 bg-white border border-emerald-300 rounded text-xs text-slate-800 focus:outline-none"
+                    className="w-18 px-1.5 py-0.5 bg-white border border-secondary/40 rounded text-xs text-on-surface focus:outline-none"
                     autoFocus
                   />
-                  <span className="text-emerald-700 font-medium">€:</span>
+                  <span className="text-secondary font-bold">€:</span>
                   <input
                     type="number"
                     step="0.01"
                     value={manualEurInput}
                     onChange={(e) => setManualEurInput(e.target.value)}
-                    className="w-18 px-1.5 py-0.5 bg-white border border-emerald-300 rounded text-xs text-slate-800 focus:outline-none"
+                    className="w-18 px-1.5 py-0.5 bg-white border border-secondary/40 rounded text-xs text-on-surface focus:outline-none"
                   />
                   <button
                     onClick={handleSaveManualRate}
-                    className="p-0.5 text-emerald-700 hover:bg-emerald-100 rounded cursor-pointer"
+                    className="p-0.5 text-secondary hover:bg-secondary/10 rounded cursor-pointer"
                     title="Guardar tasas manuales"
                   >
                     <Check className="w-3.5 h-3.5" />
@@ -628,17 +820,17 @@ export const App: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <span className="font-bold text-emerald-900">
+                  <span className="font-mono font-bold text-on-surface font-tabular">
                     $: {bcvInfo.rate > 0 ? formatBolivares(bcvInfo.rate) : '...'}
                   </span>
-                  <span className="text-emerald-300">|</span>
-                  <span className="font-bold text-emerald-900">
+                  <span className="text-secondary/30 hidden sm:inline">|</span>
+                  <span className="font-mono font-bold text-on-surface font-tabular hidden sm:inline">
                     €: {bcvInfo.eurRate > 0 ? formatBolivares(bcvInfo.eurRate) : '...'}
                   </span>
                   <button
                     onClick={() => loadBcvRate(true)}
                     disabled={refreshingBcv}
-                    className="p-1 text-emerald-700 hover:bg-emerald-100 rounded-md transition-colors cursor-pointer"
+                    className="p-1 text-secondary hover:bg-secondary/15 rounded-md transition-colors cursor-pointer"
                     title="Sincronizar tasas oficiales ($ y €) del BCV"
                   >
                     <RefreshCw
@@ -651,7 +843,7 @@ export const App: React.FC = () => {
                       setManualEurInput(String(bcvInfo.eurRate || ''));
                       setIsEditingRate(true);
                     }}
-                    className="p-1 text-emerald-700 hover:bg-emerald-100 rounded-md transition-colors cursor-pointer"
+                    className="p-1 text-secondary hover:bg-secondary/15 rounded-md transition-colors cursor-pointer"
                     title="Ajustar tasas manualmente"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -660,202 +852,361 @@ export const App: React.FC = () => {
               )}
             </div>
 
-            {/* Botón Categorías y Subcategorías */}
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs sm:text-sm font-medium text-slate-700 transition-colors cursor-pointer"
+              className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface cursor-pointer"
+              title="Categorías"
             >
-              <Tags className="w-4 h-4 text-indigo-600" />
-              <span className="hidden sm:inline">Categorías</span>
+              <Tags className="w-3.5 h-3.5 text-secondary" />
             </button>
 
-            {/* Botón Cerrar Sesión */}
             <button
               onClick={handleSignOut}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700 text-xs sm:text-sm font-medium text-slate-600 transition-colors cursor-pointer"
-              title={`Cerrar sesión (${session.user.email})`}
+              className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-slate-600 hover:text-error cursor-pointer"
+              title="Cerrar sesión"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden md:inline">Salir</span>
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Contenido Principal */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 space-y-6">
-        {/* Pestañas de Navegación: Gastos del Mes | Suscripciones (Mensual/Anual) | Comparativa Mensual */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-200/70 p-1 rounded-2xl w-fit">
+        {/* Barra de Navegación Móvil (< lg) */}
+        <div className="lg:hidden px-4 pt-3 flex items-center gap-1.5 overflow-x-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('monthly')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'monthly'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-              }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+              activeTab === 'monthly'
+                ? 'bg-primary text-white'
+                : 'bg-surface-container-low text-on-surface-variant'
+            }`}
           >
-            <ListPlus className="w-4 h-4" />
-            Registro y Gastos del Mes
+            Gastos del Mes
           </button>
-
           <button
+            type="button"
             onClick={() => setActiveTab('subscriptions')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'subscriptions'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-              }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+              activeTab === 'subscriptions'
+                ? 'bg-primary text-white'
+                : 'bg-surface-container-low text-on-surface-variant'
+            }`}
           >
-            <Repeat className="w-4 h-4" />
-            Suscripciones anuales
-            {subscriptions.length > 0 && (
-              <span className="px-1.5 py-0.2 bg-indigo-100 text-indigo-700 rounded-full text-xs">
-                {subscriptions.length}
-              </span>
-            )}
+            Suscripciones ({subscriptions.length})
           </button>
-
           <button
+            type="button"
             onClick={() => setActiveTab('comparison')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'comparison'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-              }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+              activeTab === 'comparison'
+                ? 'bg-primary text-white'
+                : 'bg-surface-container-low text-on-surface-variant'
+            }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            Desglose y Comparativa Mensual
+            Comparativa
           </button>
-
           <button
+            type="button"
             onClick={() => {
               setSelectedYear(Number(selectedMonth.slice(0, 4)));
               setActiveTab('annual');
             }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'annual'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-              }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+              activeTab === 'annual'
+                ? 'bg-primary text-white'
+                : 'bg-surface-container-low text-on-surface-variant'
+            }`}
           >
-            <Calendar className="w-4 h-4" />
-            Resumen Anual y Cambiario
+            Resumen Anual
           </button>
         </div>
 
-        {backendError && (
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-4">
-            <span>
-              <strong>No se pudo conectar con Supabase.</strong> Verifica tu conexión a internet o las variables de entorno <code className="bg-red-100 px-1.5 py-0.5 rounded font-mono">VITE_SUPABASE_URL</code> y <code className="bg-red-100 px-1.5 py-0.5 rounded font-mono">VITE_SUPABASE_PUBLISHABLE_KEY</code>.
-            </span>
-          </div>
-        )}
-
-        {!backendError &&
-          expenses.length === 0 &&
-          latestMonthWithExpenses &&
-          activeTab === 'monthly' && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl text-xs sm:text-sm flex flex-wrap items-center justify-between gap-3">
+        {/* Contenido Principal */}
+        <main className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6 pb-16">
+          {backendError && (
+            <div className="bg-error-container/50 border border-error/20 text-on-error-container px-4 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-between gap-4">
               <span>
-                Estás viendo <strong>{formatMonthLabel(selectedMonth)}</strong> (aún sin gastos puntuales este mes). Tienes{' '}
-                <strong>{latestMonthWithExpenses.count} movimientos</strong> guardados en{' '}
-                <strong>{formatMonthLabel(latestMonthWithExpenses.month)}</strong>.
+                <strong>No se pudo conectar con Supabase.</strong> Verifica tu conexión a internet o las credenciales del proyecto.
               </span>
-              <button
-                type="button"
-                onClick={() => setSelectedMonth(latestMonthWithExpenses.month)}
-                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition-colors cursor-pointer shrink-0"
-              >
-                Ir a {formatMonthLabel(latestMonthWithExpenses.month)}
-              </button>
             </div>
           )}
 
-        {activeTab === 'monthly' ? (
-          <>
-            {/* Resumen del Mes y Barras por Categoría / Subcategoría */}
-            <MonthlySummary
-              totalAmount={totalAmount}
-              punctualUsdAmount={baseExpensesUsd}
-              totalAmountEur={totalAmountEur}
-              totalAmountVes={totalAmountVes}
-              historicalPunctualVes={historicalPunctualVes}
-              subscriptionsMonthlyUsd={subscriptionsMonthlyUsd}
-              separatedAnnualUsd={separatedAnnualUsd}
-              currentBcvRate={bcvInfo.rate}
-              currentBcvEurRate={bcvInfo.eurRate}
-              expenseCount={expenses.length}
-              breakdown={breakdown}
-              activeCategoryFilter={activeCategoryFilter}
-              onSelectCategoryFilter={setActiveCategoryFilter}
-              onOpenSubscriptionsTab={() => setActiveTab('subscriptions')}
-            />
-
-            {/* Formulario Rápido para Nuevo Gasto */}
-            <ExpenseForm
-              categories={categories}
-              subcategories={subcategories}
-              selectedMonth={selectedMonth}
-              currentBcvRate={bcvInfo.rate}
-              currentBcvEurRate={bcvInfo.eurRate}
-              onAddExpense={handleAddExpense}
-              onOpenCategories={() => setIsCategoryModalOpen(true)}
-            />
-
-            {/* Listado de Gastos del Mes */}
-            {loading ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-sm text-slate-400">
-                Cargando gastos...
+          {!backendError &&
+            expenses.length === 0 &&
+            latestMonthWithExpenses &&
+            activeTab === 'monthly' && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl text-xs sm:text-sm flex flex-wrap items-center justify-between gap-3">
+                <span>
+                  Estás viendo <strong>{formatMonthLabel(selectedMonth)}</strong> (aún sin gastos puntuales este mes). Tienes{' '}
+                  <strong>{latestMonthWithExpenses.count} movimientos</strong> guardados en{' '}
+                  <strong>{formatMonthLabel(latestMonthWithExpenses.month)}</strong>.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonth(latestMonthWithExpenses.month)}
+                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors cursor-pointer shrink-0"
+                >
+                  Ir a {formatMonthLabel(latestMonthWithExpenses.month)}
+                </button>
               </div>
-            ) : (
-              <ExpenseList
-                expenses={filteredExpenses}
-                categories={categories}
-                subcategories={subcategories}
+            )}
+
+          {activeTab === 'monthly' ? (
+            <>
+              {/* Sub-header Controller Bar (Adaptado de Stitch Monthly Expense Manager) */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-secondary font-bold block">
+                      Período Contable Activo
+                    </span>
+                    <h2 className="text-xl font-extrabold text-on-surface tracking-tight capitalize">
+                      {formatMonthLabel(selectedMonth)}
+                    </h2>
+                  </div>
+                  <div className="hidden sm:block h-8 w-[1px] bg-slate-200 mx-1" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/40 text-on-secondary-container text-xs font-mono font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                    {activeDaysCount} {activeDaysCount === 1 ? 'Día' : 'Días'} con Actividad
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleExportCsv}
+                    disabled={expenses.length === 0}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-on-surface hover:bg-surface-container-low disabled:opacity-40 transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-secondary" />
+                    Exportar CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFocusNewExpense}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-on-secondary-container text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Registrar Gasto
+                  </button>
+                </div>
+              </div>
+
+              {/* Resumen del Mes: 4 KPI Cards + 60/40 Cadencia Diaria & Categorías */}
+              <MonthlySummary
+                selectedMonth={selectedMonth}
+                expenses={expenses}
+                totalAmount={totalAmount}
+                punctualUsdAmount={baseExpensesUsd}
+                totalAmountEur={totalAmountEur}
+                totalAmountVes={totalAmountVes}
+                historicalPunctualVes={historicalPunctualVes}
+                subscriptionsMonthlyUsd={subscriptionsMonthlyUsd}
+                separatedAnnualUsd={separatedAnnualUsd}
                 currentBcvRate={bcvInfo.rate}
                 currentBcvEurRate={bcvInfo.eurRate}
-                onUpdateExpense={handleUpdateExpense}
-                onDeleteExpense={handleDeleteExpense}
+                expenseCount={expenses.length}
+                breakdown={breakdown}
+                activeCategoryFilter={activeCategoryFilter}
+                onSelectCategoryFilter={setActiveCategoryFilter}
+                selectedDateFilter={selectedDateFilter}
+                onSelectDateFilter={setSelectedDateFilter}
+                onOpenSubscriptionsTab={() => setActiveTab('subscriptions')}
+                onOpenCategories={() => setIsCategoryModalOpen(true)}
               />
-            )}
-          </>
-        ) : activeTab === 'subscriptions' ? (
-          <SubscriptionsView
-            categories={categories}
-            subcategories={subcategories}
-            subscriptions={subscriptions}
-            currentBcvRate={bcvInfo.rate}
-            currentBcvEurRate={bcvInfo.eurRate}
-            includeAnnualInMonthlyGlobal={includeAnnualInMonthlyGlobal}
-            onToggleGlobalAnnualInMonthly={handleToggleGlobalAnnualInMonthly}
-            onCreateSubscription={handleCreateSubscription}
-            onToggleSubscriptionMonthly={handleToggleSubscriptionMonthly}
-            onDeleteSubscription={handleDeleteSubscription}
-            onOpenCategories={() => setIsCategoryModalOpen(true)}
-          />
-        ) : activeTab === 'comparison' ? (
-          <MonthlyComparisonView
-            selectedMonth={selectedMonth}
-            onSelectMonth={setSelectedMonth}
-            categories={categories}
-            subcategories={subcategories}
-            history={analyticsHistory}
-            currentBcvRate={bcvInfo.rate}
-            currentBcvEurRate={bcvInfo.eurRate}
-          />
-        ) : (
-          <AnnualSummaryView
-            selectedYear={selectedYear}
-            onSelectYear={setSelectedYear}
-            onSelectMonthAndGoToMonthly={(ym) => {
-              setSelectedMonth(ym);
-              setActiveTab('monthly');
-            }}
-            categories={categories}
-            subcategories={subcategories}
-            history={analyticsHistory}
-            subscriptions={subscriptions}
-            currentBcvRate={bcvInfo.rate}
-            currentBcvEurRate={bcvInfo.eurRate}
-          />
-        )}
-      </main>
+
+              {/* Formulario de Registro con Autocompletado y Tasas Históricas */}
+              <ExpenseForm
+                categories={categories}
+                subcategories={subcategories}
+                selectedMonth={selectedMonth}
+                currentBcvRate={bcvInfo.rate}
+                currentBcvEurRate={bcvInfo.eurRate}
+                onAddExpense={handleAddExpense}
+                onOpenCategories={() => setIsCategoryModalOpen(true)}
+              />
+
+              {/* Sección Inferior 12 Columnas: Libro Mayor (8 cols) + Suscripciones Activas (4 cols) */}
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                <div className="xl:col-span-8">
+                  {loading ? (
+                    <div className="bg-surface-container-lowest rounded-xl border border-slate-100 p-12 text-center text-sm font-mono text-on-surface-variant">
+                      Sincronizando libro mayor con Supabase...
+                    </div>
+                  ) : (
+                    <ExpenseList
+                      expenses={filteredExpenses}
+                      categories={categories}
+                      subcategories={subcategories}
+                      currentBcvRate={bcvInfo.rate}
+                      currentBcvEurRate={bcvInfo.eurRate}
+                      selectedDateFilter={selectedDateFilter}
+                      onClearDateFilter={() => setSelectedDateFilter(null)}
+                      activeCategoryFilter={activeCategoryFilter}
+                      onClearCategoryFilter={() => setActiveCategoryFilter(null)}
+                      onUpdateExpense={handleUpdateExpense}
+                      onDeleteExpense={handleDeleteExpense}
+                    />
+                  )}
+                </div>
+
+                {/* Columna Derecha (4 cols): Tarjeta de Suscripciones Recurrentes (Estilo Stitch) */}
+                <div className="xl:col-span-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-bold text-on-surface">
+                        Cargos Recurrentes
+                      </h3>
+                      <p className="text-xs text-on-surface-variant">
+                        Suscripciones mensuales y anuales
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('subscriptions')}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-secondary hover:underline cursor-pointer"
+                    >
+                      Gestionar
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {subscriptions.length === 0 ? (
+                    <div className="p-6 rounded-xl bg-surface-container-low/60 text-center space-y-2">
+                      <Repeat className="w-6 h-6 text-secondary mx-auto opacity-75" />
+                      <p className="text-xs font-semibold text-on-surface">
+                        Sin suscripciones registradas
+                      </p>
+                      <p className="text-[11px] text-on-surface-variant">
+                        Agrega pagos fijos (Internet, Streaming, Gimnasio) para proyectar tu obligación mensual.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('subscriptions')}
+                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-white text-xs font-semibold cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Configurar Suscripciones
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2.5 max-h-88 overflow-y-auto pr-1">
+                        {subscriptions.map((sub) => {
+                          const monthlyEq =
+                            sub.billing_cycle === 'annual'
+                              ? sub.amount / 12
+                              : sub.amount;
+                          const isIncluded = sub.include_in_monthly === 1;
+                          return (
+                            <div
+                              key={sub.id}
+                              className="p-3 rounded-lg bg-surface-container-low/60 hover:bg-surface-container-low transition-all flex items-center justify-between gap-2"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-mono text-xs font-bold"
+                                  style={{
+                                    backgroundColor: `${sub.category_color}20`,
+                                    color: sub.category_color,
+                                  }}
+                                >
+                                  D{sub.billing_day}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-on-surface truncate">
+                                    {sub.name}
+                                  </p>
+                                  <p className="text-[10px] font-mono text-on-surface-variant">
+                                    {sub.billing_cycle === 'annual'
+                                      ? `Anual (${formatCurrency(sub.amount)}/año)`
+                                      : 'Ciclo Mensual'}{' '}
+                                    · {isIncluded ? 'En mes' : 'En anual'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right font-tabular shrink-0">
+                                <p className="text-xs font-mono font-bold text-on-surface">
+                                  {formatCurrency(monthlyEq)}/m
+                                </p>
+                                {bcvInfo.rate > 0 && (
+                                  <p className="text-[10px] font-mono text-on-surface-variant">
+                                    {formatBolivares(monthlyEq * bcvInfo.rate)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-on-surface-variant font-medium">
+                            Obligación Mensual Incluida
+                          </span>
+                          <span className="text-sm font-mono font-bold text-on-surface font-tabular">
+                            {formatCurrency(subscriptionsMonthlyUsd)}
+                          </span>
+                        </div>
+                        {separatedAnnualUsd > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-on-surface-variant">
+                              Reserva Anual Separada
+                            </span>
+                            <span className="font-mono font-semibold text-secondary font-tabular">
+                              {formatCurrency(separatedAnnualUsd)}/año
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : activeTab === 'subscriptions' ? (
+            <SubscriptionsView
+              categories={categories}
+              subcategories={subcategories}
+              subscriptions={subscriptions}
+              currentBcvRate={bcvInfo.rate}
+              currentBcvEurRate={bcvInfo.eurRate}
+              includeAnnualInMonthlyGlobal={includeAnnualInMonthlyGlobal}
+              onToggleGlobalAnnualInMonthly={handleToggleGlobalAnnualInMonthly}
+              onCreateSubscription={handleCreateSubscription}
+              onToggleSubscriptionMonthly={handleToggleSubscriptionMonthly}
+              onDeleteSubscription={handleDeleteSubscription}
+              onOpenCategories={() => setIsCategoryModalOpen(true)}
+            />
+          ) : activeTab === 'comparison' ? (
+            <MonthlyComparisonView
+              selectedMonth={selectedMonth}
+              onSelectMonth={setSelectedMonth}
+              categories={categories}
+              subcategories={subcategories}
+              history={analyticsHistory}
+              currentBcvRate={bcvInfo.rate}
+              currentBcvEurRate={bcvInfo.eurRate}
+            />
+          ) : (
+            <AnnualSummaryView
+              selectedYear={selectedYear}
+              onSelectYear={setSelectedYear}
+              onSelectMonthAndGoToMonthly={(ym) => {
+                setSelectedMonth(ym);
+                setActiveTab('monthly');
+              }}
+              categories={categories}
+              subcategories={subcategories}
+              history={analyticsHistory}
+              subscriptions={subscriptions}
+              currentBcvRate={bcvInfo.rate}
+              currentBcvEurRate={bcvInfo.eurRate}
+            />
+          )}
+        </main>
+      </div>
 
       {/* Modal de Gestión de Categorías y Subcategorías */}
       <CategoryManagerModal

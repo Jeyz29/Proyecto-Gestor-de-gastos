@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Search,
   Globe,
+  ArrowUpDown,
 } from 'lucide-react';
 import type {
   Expense,
@@ -27,7 +28,6 @@ import {
   getTodayISO,
 } from '../../utils/formatters.ts';
 
-// Normaliza texto quitando tildes y pasando a minúsculas para búsquedas flexibles
 const normalizeText = (text: string): string =>
   text
     .toLowerCase()
@@ -40,6 +40,10 @@ interface ExpenseListProps {
   subcategories: Subcategory[];
   currentBcvRate: number;
   currentBcvEurRate: number;
+  selectedDateFilter?: string | null;
+  onClearDateFilter?: () => void;
+  activeCategoryFilter?: string | null;
+  onClearCategoryFilter?: () => void;
   onUpdateExpense: (id: string, data: CreateExpenseInput) => Promise<void>;
   onDeleteExpense: (id: string) => Promise<void>;
 }
@@ -50,12 +54,17 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   subcategories,
   currentBcvRate,
   currentBcvEurRate,
+  selectedDateFilter = null,
+  onClearDateFilter,
+  activeCategoryFilter = null,
+  onClearCategoryFilter,
   onUpdateExpense,
   onDeleteExpense,
 }) => {
-  // Estado del buscador y alcance global ("Todos los meses")
+  // Estado del buscador, ordenamiento y alcance global ("Todos los meses")
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchAllMonths, setSearchAllMonths] = useState<boolean>(false);
+  const [sortOrder, setSortOrder] = useState<'recent' | 'highest' | 'lowest'>('recent');
   const [allMonthsExpenses, setAllMonthsExpenses] = useState<Expense[]>([]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -85,39 +94,52 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     fetchAllExpenses();
   }, [expenses, fetchAllExpenses]);
 
-  // Fuente de datos activa (mes actual vs todos los meses, sin vaciar la lista mientras carga)
   const sourceExpenses =
     searchAllMonths && allMonthsExpenses.length > 0 ? allMonthsExpenses : expenses;
 
-  // Filtrado instantáneo por descripción, categoría, subcategoría, monto o fecha
+  // Filtrado instantáneo por descripción, categoría, subcategoría, monto, fecha o filtro de día en gráfica
   const displayedExpenses = useMemo(() => {
+    let list = sourceExpenses;
+
+    if (!searchAllMonths && selectedDateFilter) {
+      list = list.filter((exp) => exp.expense_date === selectedDateFilter);
+    }
+
     const q = normalizeText(searchQuery.trim());
-    if (!q) return sourceExpenses;
+    if (q) {
+      list = list.filter((exp) => {
+        const desc = normalizeText(exp.description || '');
+        const cat = normalizeText(exp.category_name || '');
+        const sub = normalizeText(exp.subcategory_name || '');
+        const dateIso = normalizeText(exp.expense_date || '');
+        const dateShort = normalizeText(formatShortDate(exp.expense_date));
+        const monthLabel = normalizeText(formatMonthLabel(exp.expense_date.slice(0, 7)));
+        const amountUsd = exp.amount.toFixed(2);
+        const amountVes = exp.amount_ves > 0 ? exp.amount_ves.toFixed(2) : '';
+        const amountEur = exp.amount_eur > 0 ? exp.amount_eur.toFixed(2) : '';
 
-    return sourceExpenses.filter((exp) => {
-      const desc = normalizeText(exp.description || '');
-      const cat = normalizeText(exp.category_name || '');
-      const sub = normalizeText(exp.subcategory_name || '');
-      const dateIso = normalizeText(exp.expense_date || '');
-      const dateShort = normalizeText(formatShortDate(exp.expense_date));
-      const monthLabel = normalizeText(formatMonthLabel(exp.expense_date.slice(0, 7)));
-      const amountUsd = exp.amount.toFixed(2);
-      const amountVes = exp.amount_ves > 0 ? exp.amount_ves.toFixed(2) : '';
-      const amountEur = exp.amount_eur > 0 ? exp.amount_eur.toFixed(2) : '';
+        return (
+          desc.includes(q) ||
+          cat.includes(q) ||
+          sub.includes(q) ||
+          dateIso.includes(q) ||
+          dateShort.includes(q) ||
+          monthLabel.includes(q) ||
+          amountUsd.includes(q) ||
+          amountVes.includes(q) ||
+          amountEur.includes(q)
+        );
+      });
+    }
 
-      return (
-        desc.includes(q) ||
-        cat.includes(q) ||
-        sub.includes(q) ||
-        dateIso.includes(q) ||
-        dateShort.includes(q) ||
-        monthLabel.includes(q) ||
-        amountUsd.includes(q) ||
-        amountVes.includes(q) ||
-        amountEur.includes(q)
-      );
-    });
-  }, [sourceExpenses, searchQuery]);
+    if (sortOrder === 'highest') {
+      return [...list].sort((a, b) => b.amount - a.amount);
+    }
+    if (sortOrder === 'lowest') {
+      return [...list].sort((a, b) => a.amount - b.amount);
+    }
+    return list;
+  }, [sourceExpenses, searchAllMonths, selectedDateFilter, searchQuery, sortOrder]);
 
   // Subtotales de los movimientos filtrados
   const filteredTotals = useMemo(() => {
@@ -131,8 +153,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         exp.amount_ves > 0
           ? exp.amount_ves
           : currentBcvRate > 0
-          ? exp.amount * currentBcvRate
-          : 0;
+            ? exp.amount * currentBcvRate
+            : 0;
       ves += itemVes;
 
       const rateEurUsed =
@@ -141,8 +163,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         exp.amount_eur > 0
           ? exp.amount_eur
           : rateEurUsed > 0 && itemVes > 0
-          ? itemVes / rateEurUsed
-          : 0;
+            ? itemVes / rateEurUsed
+            : 0;
       eur += itemEur;
     }
 
@@ -174,7 +196,6 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     setError('');
   };
 
-  // Cuando el usuario cambia la fecha en la edición, consultar la tasa histórica del BCV de ese día
   const handleDateChange = async (newDate: string) => {
     setEditDate(newDate);
     if (!newDate) return;
@@ -257,44 +278,114 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     }
   };
 
-  const isFiltering = searchQuery.trim().length > 0 || searchAllMonths;
+  const isFiltering =
+    searchQuery.trim().length > 0 ||
+    searchAllMonths ||
+    Boolean(selectedDateFilter) ||
+    Boolean(activeCategoryFilter);
+
+  const activeCategoryObj = useMemo(
+    () => categories.find((c) => c.id === activeCategoryFilter),
+    [categories, activeCategoryFilter]
+  );
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-      {/* Cabecera con título y buscador rápido (altura fija sin saltos de layout) */}
-      <div className="px-6 py-4 border-b border-slate-100 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100 overflow-hidden">
+      {/* Cabecera estilo Stitch Monthly Expense Ledger */}
+      <div className="px-6 py-5 border-b border-slate-100 space-y-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-bold text-on-surface">
+                Libro Mayor de Movimientos
+              </h3>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant font-bold">
+                {isFiltering
+                  ? `${displayedExpenses.length} de ${sourceExpenses.length}`
+                  : `${expenses.length} registros`}
+              </span>
+              {isFiltering && displayedExpenses.length > 0 && (
+                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-secondary-container/40 text-on-secondary-container font-bold">
+                  Subtotal: {formatCurrency(filteredTotals.usd)}
+                  {filteredTotals.eur > 0 ? ` · ${formatEuros(filteredTotals.eur)}` : ''}
+                  {filteredTotals.ves > 0 ? ` · ${formatBolivares(filteredTotals.ves)}` : ''}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Registro cronológico con tasa histórica BCV y diferencial cambiario por transacción
+            </p>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">Detalle de Movimientos</h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
-              {isFiltering
-                ? `${displayedExpenses.length} de ${sourceExpenses.length}`
-                : `${expenses.length} registros`}
-            </span>
-            {isFiltering && displayedExpenses.length > 0 && (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">
-                Subtotal: <strong>{formatCurrency(filteredTotals.usd)}</strong>
-                {filteredTotals.eur > 0 ? ` · ${formatEuros(filteredTotals.eur)}` : ''}
-                {filteredTotals.ves > 0 ? ` · ${formatBolivares(filteredTotals.ves)}` : ''}
+            {/* Selector de Ordenamiento */}
+            <div className="inline-flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1.5 rounded-lg text-xs text-on-surface">
+              <ArrowUpDown className="w-3.5 h-3.5 text-on-surface-variant" />
+              <select
+                value={sortOrder}
+                onChange={(e) =>
+                  setSortOrder(e.target.value as 'recent' | 'highest' | 'lowest')
+                }
+                className="bg-transparent font-medium text-xs text-on-surface focus:outline-none cursor-pointer"
+              >
+                <option value="recent">Más recientes</option>
+                <option value="highest">Mayor monto</option>
+                <option value="lowest">Menor monto</option>
+              </select>
+            </div>
+
+            {/* Botón para alternar búsqueda en todos los meses */}
+            <button
+              type="button"
+              onClick={() => setSearchAllMonths((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                searchAllMonths
+                  ? 'bg-secondary text-white shadow-2xs'
+                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+              }`}
+              title="Buscar movimientos en todo tu historial de meses"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Buscar en todos los meses</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filtros rápidos activos (Fecha seleccionada en gráfica o Categoría activa) */}
+        {(selectedDateFilter || activeCategoryObj) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedDateFilter && onClearDateFilter && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/10 text-secondary text-xs font-mono font-semibold">
+                Día filtrado: {formatShortDate(selectedDateFilter)} ({selectedDateFilter})
+                <button
+                  type="button"
+                  onClick={onClearDateFilter}
+                  className="hover:bg-secondary/20 rounded p-0.5 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {activeCategoryObj && onClearCategoryFilter && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                style={{
+                  backgroundColor: `${activeCategoryObj.color}18`,
+                  color: activeCategoryObj.color,
+                }}
+              >
+                Categoría: {activeCategoryObj.name}
+                <button
+                  type="button"
+                  onClick={onClearCategoryFilter}
+                  className="hover:opacity-75 rounded p-0.5 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
             )}
           </div>
-
-          {/* Botón para alternar búsqueda en todos los meses */}
-          <button
-            type="button"
-            onClick={() => setSearchAllMonths((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
-              searchAllMonths
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-            }`}
-            title="Buscar movimientos en todo tu historial de meses"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Buscar en todos los meses</span>
-          </button>
-        </div>
+        )}
 
         {/* Barra de búsqueda */}
         <div className="relative">
@@ -305,16 +396,16 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               searchAllMonths
-                ? 'Buscar en todos los meses por descripción, categoría, subcategoría, monto o fecha...'
-                : 'Buscar en este mes por descripción, categoría, subcategoría, monto o fecha...'
+                ? 'Buscar en todos los meses por concepto, categoría, subcategoría, monto o fecha...'
+                : 'Filtrar movimientos de este mes por concepto, categoría, monto o fecha...'
             }
-            className="w-full pl-9 pr-9 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            className="w-full pl-9 pr-9 py-2 bg-surface-container-low hover:bg-surface-container/60 focus:bg-surface-container-lowest rounded-lg border border-transparent focus:border-secondary/30 text-xs sm:text-sm text-on-surface placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-all"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="p-1 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+              className="p-1 text-slate-400 hover:text-on-surface absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
               title="Limpiar búsqueda"
             >
               <X className="w-3.5 h-3.5" />
@@ -323,34 +414,47 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         </div>
       </div>
 
+      {/* Cabecera de Columnas estilo Stitch Ledger */}
+      {displayedExpenses.length > 0 && (
+        <div className="hidden sm:grid sm:grid-cols-12 px-6 py-2.5 bg-surface-container-low/60 border-b border-slate-100 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
+          <div className="col-span-2">Fecha</div>
+          <div className="col-span-4">Concepto & Tasa BCV</div>
+          <div className="col-span-3">Categoría / Subcategoría</div>
+          <div className="col-span-3 text-right">Monto Ledger</div>
+        </div>
+      )}
+
       {displayedExpenses.length === 0 ? (
         <div className="p-12 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+          <div className="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center mx-auto mb-3 text-on-surface-variant">
             <Receipt className="w-6 h-6" />
           </div>
-          {searchQuery.trim() ? (
+          {searchQuery.trim() || selectedDateFilter ? (
             <>
-              <h3 className="text-sm font-semibold text-slate-700">
-                No se encontraron movimientos para "{searchQuery}"
+              <h3 className="text-sm font-bold text-on-surface">
+                No se encontraron movimientos con los filtros actuales
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-on-surface-variant mt-1">
                 {!searchAllMonths
-                  ? 'Prueba buscando con otro término o activa "Buscar en todos los meses".'
+                  ? 'Prueba con otro término o activa "Buscar en todos los meses".'
                   : 'No hay coincidencias en ningún mes registrado.'}
               </p>
               <div className="mt-3 flex items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSearchQuery('');
+                    onClearDateFilter?.();
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-xs font-semibold text-on-surface transition-colors cursor-pointer"
                 >
-                  Limpiar filtro
+                  Limpiar filtros
                 </button>
                 {!searchAllMonths && (
                   <button
                     type="button"
                     onClick={() => setSearchAllMonths(true)}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-medium text-white transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-on-secondary-container text-xs font-semibold text-white transition-colors cursor-pointer"
                   >
                     Buscar en todos los meses
                   </button>
@@ -359,357 +463,354 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             </>
           ) : (
             <>
-              <h3 className="text-sm font-semibold text-slate-700">Sin gastos registrados</h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Usa el formulario superior para añadir tu primer gasto de este mes o activa "Buscar en todos los meses".
+              <h3 className="text-sm font-bold text-on-surface">Sin gastos registrados</h3>
+              <p className="text-xs text-on-surface-variant mt-1">
+                Usa el formulario superior para registrar tu primer movimiento o activa "Buscar en todos los meses".
               </p>
             </>
           )}
         </div>
       ) : (
-      <div className="divide-y divide-slate-100">
-        {displayedExpenses.map((expense) => {
-          const isEditing = editingId === expense.id;
+        <div className="divide-y divide-slate-100/80">
+          {displayedExpenses.map((expense) => {
+            const isEditing = editingId === expense.id;
 
-          if (isEditing) {
-            return (
-              <form
-                key={expense.id}
-                onSubmit={(e) => handleSaveEdit(e, expense.id)}
-                className="p-5 bg-indigo-50/40 space-y-3.5 transition-all"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
-                    Modificando Movimiento
-                  </span>
-
-                  {/* Selector de moneda para editar el monto */}
-                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditCurrency('USD');
-                        setEditRawAmount(
-                          previewUsd > 0 ? previewUsd.toFixed(2) : String(expense.amount)
-                        );
-                      }}
-                      className={`px-2 py-0.5 rounded-lg font-medium cursor-pointer ${
-                        editCurrency === 'USD'
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      USD ($)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditCurrency('EUR');
-                        setEditRawAmount(
-                          previewEur > 0 ? previewEur.toFixed(2) : ''
-                        );
-                      }}
-                      className={`px-2 py-0.5 rounded-lg font-medium cursor-pointer ${
-                        editCurrency === 'EUR'
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      EUR (€)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditCurrency('VES');
-                        setEditRawAmount(
-                          previewVes > 0 ? previewVes.toFixed(2) : ''
-                        );
-                      }}
-                      className={`px-2 py-0.5 rounded-lg font-medium cursor-pointer ${
-                        editCurrency === 'VES'
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Bs. (BCV)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                  {/* Descripción */}
-                  <div className="sm:col-span-3">
-                    <label className="block text-[11px] font-medium text-slate-500 mb-1">
-                      Descripción
-                    </label>
-                    <input
-                      type="text"
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      required
-                      className="w-full px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Monto */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-medium text-slate-500 mb-1">
-                      Monto ({editCurrency === 'USD' ? '$' : editCurrency === 'EUR' ? '€' : 'Bs.'})
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={editRawAmount}
-                      onChange={(e) => setEditRawAmount(e.target.value)}
-                      required
-                      className="w-full px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Categoría */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-medium text-slate-500 mb-1">
-                      Categoría
-                    </label>
-                    <select
-                      value={editCategoryId}
-                      onChange={(e) => {
-                        setEditCategoryId(e.target.value);
-                        setEditSubcategoryId('');
-                      }}
-                      className="w-full px-2.5 py-1.5 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Subcategoría */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-medium text-slate-500 mb-1">
-                      Subcategoría
-                    </label>
-                    <select
-                      value={editSubcategoryId}
-                      onChange={(e) => setEditSubcategoryId(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">General</option>
-                      {availableSubcategories.map((sub) => (
-                        <option key={sub.id} value={sub.id}>
-                          {sub.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Fecha */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-medium text-slate-500 mb-1">
-                      Fecha
-                    </label>
-                    <input
-                      type="date"
-                      value={editDate}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      required
-                      className="w-full px-2.5 py-1.5 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Botones Guardar / Cancelar */}
-                  <div className="sm:col-span-1 flex items-end justify-end gap-1.5">
-                    <button
-                      type="submit"
-                      disabled={saving || loadingRate}
-                      className="p-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl transition-colors cursor-pointer"
-                      title="Guardar cambios"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelEditing}
-                      className="p-2 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-                      title="Cancelar"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Resumen de conversión y tasa aplicada al editar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 bg-white/80 px-3 py-2 rounded-xl border border-indigo-100">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="inline-flex items-center gap-1 font-medium text-indigo-700">
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      Nuevo valor:
+            if (isEditing) {
+              return (
+                <form
+                  key={expense.id}
+                  onSubmit={(e) => handleSaveEdit(e, expense.id)}
+                  className="p-5 bg-surface-container-low/60 space-y-3.5 transition-all"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-mono font-bold text-secondary uppercase tracking-wider">
+                      Modificando Movimiento en Ledger
                     </span>
-                    <span>
-                      USD: <strong>{formatCurrency(previewUsd)}</strong>
-                    </span>
-                    {activeEurRate > 0 && (
-                      <span>
-                        EUR: <strong>{formatEuros(previewEur)}</strong>
+
+                    <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-lg border border-slate-200 text-xs font-mono">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditCurrency('USD');
+                          setEditRawAmount(
+                            previewUsd > 0 ? previewUsd.toFixed(2) : String(expense.amount)
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
+                          editCurrency === 'USD'
+                            ? 'bg-secondary text-white'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        USD ($)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditCurrency('EUR');
+                          setEditRawAmount(
+                            previewEur > 0 ? previewEur.toFixed(2) : ''
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
+                          editCurrency === 'EUR'
+                            ? 'bg-secondary text-white'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        EUR (€)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditCurrency('VES');
+                          setEditRawAmount(
+                            previewVes > 0 ? previewVes.toFixed(2) : ''
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
+                          editCurrency === 'VES'
+                            ? 'bg-secondary text-white'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        Bs. (BCV)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
+                        Descripción
+                      </label>
+                      <input
+                        type="text"
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        required
+                        className="w-full px-3 py-1.5 bg-surface-container-lowest rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
+                        Monto ({editCurrency === 'USD' ? '$' : editCurrency === 'EUR' ? '€' : 'Bs.'})
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={editRawAmount}
+                        onChange={(e) => setEditRawAmount(e.target.value)}
+                        required
+                        className="w-full px-3 py-1.5 bg-surface-container-lowest rounded-lg border border-slate-200 text-sm font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
+                        Categoría
+                      </label>
+                      <select
+                        value={editCategoryId}
+                        onChange={(e) => {
+                          setEditCategoryId(e.target.value);
+                          setEditSubcategoryId('');
+                        }}
+                        className="w-full px-2.5 py-1.5 bg-surface-container-lowest rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
+                        Subcategoría
+                      </label>
+                      <select
+                        value={editSubcategoryId}
+                        onChange={(e) => setEditSubcategoryId(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-surface-container-lowest rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                      >
+                        <option value="">General</option>
+                        {availableSubcategories.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
+                        Fecha
+                      </label>
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => handleDateChange(e.target.value)}
+                        required
+                        className="w-full px-2.5 py-1.5 bg-surface-container-lowest rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1 flex items-end justify-end gap-1.5">
+                      <button
+                        type="submit"
+                        disabled={saving || loadingRate}
+                        className="p-2 bg-secondary hover:bg-on-secondary-container disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer"
+                        title="Guardar cambios"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEditing}
+                        className="p-2 bg-surface-container-lowest hover:bg-slate-100 text-on-surface-variant border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                        title="Cancelar"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant bg-surface-container-lowest px-3.5 py-2 rounded-lg border border-slate-200/80">
+                    <div className="flex flex-wrap items-center gap-3 font-mono">
+                      <span className="inline-flex items-center gap-1 font-sans font-semibold text-secondary">
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                        Nuevo valor:
                       </span>
-                    )}
-                    <span>
-                      Bs.: <strong>{formatBolivares(previewVes)}</strong>
-                    </span>
+                      <span>
+                        USD: <strong className="text-on-surface">{formatCurrency(previewUsd)}</strong>
+                      </span>
+                      {activeEurRate > 0 && (
+                        <span>
+                          EUR: <strong className="text-on-surface">{formatEuros(previewEur)}</strong>
+                        </span>
+                      )}
+                      <span>
+                        Bs.: <strong className="text-on-surface">{formatBolivares(previewVes)}</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-on-surface-variant">
+                      <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>
+                        BCV ({editDate}): $: Bs. {activeUsdRate.toFixed(4)}
+                        {activeEurRate > 0 ? ` · €: Bs. ${activeEurRate.toFixed(4)}` : ''}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                    <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
-                    <span>
-                      Tasa BCV ({editDate}): $: Bs. {activeUsdRate.toFixed(4)}
-                      {activeEurRate > 0 ? ` · €: Bs. ${activeEurRate.toFixed(4)}` : ''}
-                    </span>
-                  </div>
-                </div>
+                  {error && (
+                    <p className="text-xs text-error bg-error-container/40 px-3 py-1.5 rounded-lg">
+                      {error}
+                    </p>
+                  )}
+                </form>
+              );
+            }
 
-                {error && (
-                  <p className="text-xs text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
-                    {error}
-                  </p>
-                )}
-              </form>
-            );
-          }
+            const vesAmount =
+              expense.amount_ves > 0
+                ? expense.amount_ves
+                : currentBcvRate > 0
+                  ? expense.amount * currentBcvRate
+                  : 0;
 
-          const vesAmount =
-            expense.amount_ves > 0
-              ? expense.amount_ves
-              : currentBcvRate > 0
-              ? expense.amount * currentBcvRate
-              : 0;
+            const rateUsdUsed =
+              expense.exchange_rate > 0 ? expense.exchange_rate : currentBcvRate;
+            const rateEurUsed =
+              expense.exchange_rate_eur > 0
+                ? expense.exchange_rate_eur
+                : currentBcvEurRate;
 
-          const rateUsdUsed =
-            expense.exchange_rate > 0 ? expense.exchange_rate : currentBcvRate;
-          const rateEurUsed =
-            expense.exchange_rate_eur > 0
-              ? expense.exchange_rate_eur
-              : currentBcvEurRate;
+            const eurAmount =
+              expense.amount_eur > 0
+                ? expense.amount_eur
+                : rateEurUsed > 0 && vesAmount > 0
+                  ? vesAmount / rateEurUsed
+                  : 0;
 
-          const eurAmount =
-            expense.amount_eur > 0
-              ? expense.amount_eur
-              : rateEurUsed > 0 && vesAmount > 0
-              ? vesAmount / rateEurUsed
-              : 0;
+            const usdTodayEquivalent =
+              currentBcvRate > 0 && vesAmount > 0
+                ? vesAmount / currentBcvRate
+                : expense.amount;
+            const itemExchangeDiffUsd = expense.amount - usdTodayEquivalent;
+            const hasExchangeDiff = Math.abs(itemExchangeDiffUsd) >= 0.02;
 
-          // Efecto cambiario individual: cuánto equivalen hoy en USD los Bolívares pagados ese día
-          const usdTodayEquivalent =
-            currentBcvRate > 0 && vesAmount > 0 ? vesAmount / currentBcvRate : expense.amount;
-          const itemExchangeDiffUsd = expense.amount - usdTodayEquivalent;
-          const hasExchangeDiff = Math.abs(itemExchangeDiffUsd) >= 0.02;
-
-          return (
-            <div
-              key={expense.id}
-              className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors group"
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                {/* Fecha corta */}
+            return (
+              <div
+                key={expense.id}
+                className="px-6 py-4 flex flex-col sm:grid sm:grid-cols-12 items-start sm:items-center gap-2 sm:gap-3 hover:bg-surface-container-low/40 transition-colors group"
+              >
+                {/* Col 1-2: Fecha */}
                 <div
-                  className="text-xs font-medium text-slate-400 w-14 shrink-0"
+                  className="sm:col-span-2 text-xs font-mono text-on-surface-variant shrink-0"
                   title={expense.expense_date}
                 >
                   {formatShortDate(expense.expense_date)}
                 </div>
 
-                {/* Descripción, Categoría y Subcategoría */}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">
+                {/* Col 3-6: Concepto & Tasa BCV */}
+                <div className="sm:col-span-4 min-w-0">
+                  <p className="text-sm font-semibold text-on-surface truncate">
                     {expense.description}
                   </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: `${expense.category_color}18`,
-                        color: expense.category_color,
-                      }}
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: expense.category_color }}
-                      />
-                      <span>{expense.category_name}</span>
-                      {expense.subcategory_name && (
-                        <>
-                          <ChevronRight className="w-3 h-3 opacity-70" />
-                          <span className="font-semibold">{expense.subcategory_name}</span>
-                        </>
-                      )}
-                    </span>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     {rateUsdUsed > 0 && (
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[10px] font-mono text-on-surface-variant">
                         BCV $: Bs. {rateUsdUsed.toFixed(2)}
                         {rateEurUsed > 0 ? ` · €: Bs. ${rateEurUsed.toFixed(2)}` : ''}
                       </span>
                     )}
                     {hasExchangeDiff && (
                       <span
-                        className={`text-[11px] px-1.5 py-0.2 rounded font-medium ${
+                        className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${
                           itemExchangeDiffUsd > 0
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-red-50 text-red-700'
+                            ? 'bg-secondary-container/40 text-on-secondary-container'
+                            : 'bg-error-container/60 text-error'
                         }`}
                         title="Valor actual en USD de esos Bolívares a la tasa BCV de hoy"
                       >
-                        Hoy equivale a {formatCurrency(usdTodayEquivalent)} (
+                        Hoy: {formatCurrency(usdTodayEquivalent)} (
                         {itemExchangeDiffUsd > 0 ? '+' : ''}
                         {formatCurrency(itemExchangeDiffUsd)})
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
 
-              {/* Monto en USD + Equivalentes en EUR y Bs. + Acciones de Editar y Eliminar */}
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="text-right">
-                  <span className="block text-sm font-semibold text-slate-900">
-                    {formatCurrency(expense.amount)}
-                  </span>
-                  <span className="block text-xs text-slate-500">
-                    {eurAmount > 0 ? `${formatEuros(eurAmount)} · ` : ''}
-                    {vesAmount > 0 ? formatBolivares(vesAmount) : ''}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => startEditing(expense)}
-                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                    title="Modificar movimiento"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await onDeleteExpense(expense.id);
-                      if (searchAllMonths) {
-                        await fetchAllExpenses();
-                      }
+                {/* Col 7-9: Categoría y Subcategoría */}
+                <div className="sm:col-span-3 flex items-center flex-wrap gap-1.5">
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                    style={{
+                      backgroundColor: `${expense.category_color}18`,
+                      color: expense.category_color,
                     }}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                    title="Eliminar movimiento"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: expense.category_color }}
+                    />
+                    <span className="truncate max-w-28">{expense.category_name}</span>
+                    {expense.subcategory_name && (
+                      <>
+                        <ChevronRight className="w-3 h-3 opacity-70 shrink-0" />
+                        <span className="font-bold truncate max-w-24">
+                          {expense.subcategory_name}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {/* Col 10-12: Monto Ledger + Acciones */}
+                <div className="sm:col-span-3 w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                  <div className="text-left sm:text-right font-tabular">
+                    <span className="block text-sm font-mono font-bold text-on-surface">
+                      -{formatCurrency(expense.amount)}
+                    </span>
+                    <span className="block text-[11px] font-mono text-on-surface-variant">
+                      {eurAmount > 0 ? `${formatEuros(eurAmount)} · ` : ''}
+                      {vesAmount > 0 ? formatBolivares(vesAmount) : ''}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-85 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => startEditing(expense)}
+                      className="p-1.5 text-slate-400 hover:text-secondary hover:bg-secondary/10 rounded-lg transition-colors cursor-pointer"
+                      title="Modificar movimiento"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await onDeleteExpense(expense.id);
+                        if (searchAllMonths) {
+                          await fetchAllExpenses();
+                        }
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-error hover:bg-error-container/40 rounded-lg transition-colors cursor-pointer"
+                      title="Eliminar movimiento"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
