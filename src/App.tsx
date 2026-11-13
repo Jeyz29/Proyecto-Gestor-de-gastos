@@ -598,20 +598,17 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-surface text-on-surface flex">
       {/* Barra Lateral Izquierda Fija (Desktop) */}
       <aside
-        className={`hidden lg:flex ${
-          isSidebarCollapsed ? 'w-28' : 'w-64'
-        } shrink-0 border-r border-slate-200/60 bg-surface flex-col fixed inset-y-0 left-0 z-40 transition-all duration-200 ease-in-out`}
+        className={`hidden lg:flex ${isSidebarCollapsed ? 'w-28' : 'w-64'
+          } shrink-0 border-r border-slate-200/60 bg-surface flex-col fixed inset-y-0 left-0 z-40 transition-all duration-200 ease-in-out`}
       >
         <div className={`${isSidebarCollapsed ? 'px-2.5 py-6' : 'p-6'} flex flex-col h-full transition-all duration-200`}>
           {/* Brand Header: G-Budget / G-B con botón para desplegar/minimizar al mismo nivel */}
           <div className="flex items-center justify-between gap-1 mb-8 px-0.5">
             <div className={`flex items-center ${isSidebarCollapsed ? 'gap-1.5' : 'gap-3'} min-w-0 shrink-0`}>
               <div
-                className={`${
-                  isSidebarCollapsed ? 'w-8 h-8 rounded-lg' : 'w-9 h-9 rounded-lg'
-                } overflow-hidden shadow-xs shrink-0 ${
-                  isSidebarCollapsed ? 'cursor-pointer hover:opacity-90' : ''
-                }`}
+                className={`${isSidebarCollapsed ? 'w-8 h-8 rounded-lg' : 'w-9 h-9 rounded-lg'
+                  } overflow-hidden shadow-xs shrink-0 ${isSidebarCollapsed ? 'cursor-pointer hover:opacity-90' : ''
+                  }`}
                 onClick={() => isSidebarCollapsed && setIsSidebarCollapsed(false)}
                 title={isSidebarCollapsed ? 'G-B - Clic para desplegar' : undefined}
               >
@@ -622,9 +619,8 @@ export const App: React.FC = () => {
                 />
               </div>
               <h1
-                className={`font-extrabold tracking-tight text-on-surface leading-none ${
-                  isSidebarCollapsed ? 'text-xs font-black shrink-0 whitespace-nowrap' : 'text-lg truncate'
-                }`}
+                className={`font-extrabold tracking-tight text-on-surface leading-none ${isSidebarCollapsed ? 'text-xs font-black shrink-0 whitespace-nowrap' : 'text-lg truncate'
+                  }`}
               >
                 {isSidebarCollapsed ? 'G-B' : 'G-Budget'}
               </h1>
@@ -657,19 +653,16 @@ export const App: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('monthly')}
-              className={`w-full flex items-center ${
-                isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
-              } rounded-lg text-sm transition-all cursor-pointer ${
-                activeTab === 'monthly'
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+                } rounded-lg text-sm transition-all cursor-pointer ${activeTab === 'monthly'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
-              }`}
+                }`}
               title={isSidebarCollapsed ? 'Gastos del Mes' : undefined}
             >
               <ListPlus
-                className={`w-4 h-4 shrink-0 ${
-                  activeTab === 'monthly' ? 'text-secondary' : 'text-slate-500'
-                }`}
+                className={`w-4 h-4 shrink-0 ${activeTab === 'monthly' ? 'text-secondary' : 'text-slate-500'
+                  }`}
               />
               {!isSidebarCollapsed && <span>Gastos del Mes</span>}
             </button>
@@ -677,22 +670,19 @@ export const App: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('subscriptions')}
-              className={`w-full flex items-center ${
-                isSidebarCollapsed
+              className={`w-full flex items-center ${isSidebarCollapsed
                   ? 'justify-center px-2 py-2.5 relative'
                   : 'justify-between px-3 py-2.5'
-              } rounded-lg text-sm transition-all cursor-pointer ${
-                activeTab === 'subscriptions'
+                } rounded-lg text-sm transition-all cursor-pointer ${activeTab === 'subscriptions'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
-              }`}
+                }`}
               title={isSidebarCollapsed ? `Suscripciones (${subscriptions.length})` : undefined}
             >
               <span className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <Repeat
-                  className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'subscriptions' ? 'text-secondary' : 'text-slate-500'
-                  }`}
+                  className={`w-4 h-4 shrink-0 ${activeTab === 'subscriptions' ? 'text-secondary' : 'text-slate-500'
+                    }`}
                 />
                 {!isSidebarCollapsed && <span>Suscripciones</span>}
               </span>
@@ -709,19 +699,16 @@ export const App: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('comparison')}
-              className={`w-full flex items-center ${
-                isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
-              } rounded-lg text-sm transition-all cursor-pointer ${
-                activeTab === 'comparison'
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+                } rounded-lg text-sm transition-all cursor-pointer ${activeTab === 'comparison'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
-              }`}
+                }`}
               title={isSidebarCollapsed ? 'Comparativa Mensual' : undefined}
             >
               <BarChart3
-                className={`w-4 h-4 shrink-0 ${
-                  activeTab === 'comparison' ? 'text-secondary' : 'text-slate-500'
-                }`}
+                className={`w-4 h-4 shrink-0 ${activeTab === 'comparison' ? 'text-secondary' : 'text-slate-500'
+                  }`}
               />
               {!isSidebarCollapsed && <span>Comparativa Mensual</span>}
             </button>
@@ -732,19 +719,16 @@ export const App: React.FC = () => {
                 setSelectedYear(Number(selectedMonth.slice(0, 4)));
                 setActiveTab('annual');
               }}
-              className={`w-full flex items-center ${
-                isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
-              } rounded-lg text-sm transition-all cursor-pointer ${
-                activeTab === 'annual'
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+                } rounded-lg text-sm transition-all cursor-pointer ${activeTab === 'annual'
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'text-slate-600 hover:bg-slate-200/50 font-medium'
-              }`}
+                }`}
               title={isSidebarCollapsed ? 'Resumen Anual' : undefined}
             >
               <Calendar
-                className={`w-4 h-4 shrink-0 ${
-                  activeTab === 'annual' ? 'text-secondary' : 'text-slate-500'
-                }`}
+                className={`w-4 h-4 shrink-0 ${activeTab === 'annual' ? 'text-secondary' : 'text-slate-500'
+                  }`}
               />
               {!isSidebarCollapsed && <span>Resumen Anual</span>}
             </button>
@@ -760,9 +744,8 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsCategoryModalOpen(true)}
-                className={`w-full flex items-center ${
-                  isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
-                } rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 font-medium transition-all cursor-pointer`}
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
+                  } rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 font-medium transition-all cursor-pointer`}
                 title={isSidebarCollapsed ? 'Categorías y Subcategorías' : undefined}
               >
                 <Tags className="w-4 h-4 shrink-0 text-secondary" />
@@ -778,7 +761,7 @@ export const App: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck className="w-4 h-4 text-secondary" />
                   <span className="text-xs font-bold text-on-surface">
-                    Fiscal Safe · RLS Activo
+                    RLS Activo
                   </span>
                 </div>
                 <p className="text-[11px] text-on-surface-variant leading-relaxed">
@@ -797,9 +780,8 @@ export const App: React.FC = () => {
             )}
 
             <div
-              className={`flex items-center ${
-                isSidebarCollapsed ? 'justify-center' : 'justify-between px-2'
-              } text-xs text-on-surface-variant`}
+              className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-2'
+                } text-xs text-on-surface-variant`}
             >
               {!isSidebarCollapsed && (
                 <span className="truncate max-w-40" title={session.user.email}>
@@ -821,9 +803,8 @@ export const App: React.FC = () => {
 
       {/* Contenedor Derecho Principal */}
       <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? 'lg:pl-28' : 'lg:pl-64'
-        } min-w-0 flex flex-col transition-all duration-200 ease-in-out`}
+        className={`flex-1 ${isSidebarCollapsed ? 'lg:pl-28' : 'lg:pl-64'
+          } min-w-0 flex flex-col transition-all duration-200 ease-in-out`}
       >
         {/* Top Header Fijo */}
         <header className="sticky top-0 z-30 h-16 bg-surface/85 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-8 flex items-center justify-between gap-3">
@@ -963,8 +944,8 @@ export const App: React.FC = () => {
             type="button"
             onClick={() => setActiveTab('monthly')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'monthly'
-                ? 'bg-primary text-white'
-                : 'bg-surface-container-low text-on-surface-variant'
+              ? 'bg-primary text-white'
+              : 'bg-surface-container-low text-on-surface-variant'
               }`}
           >
             Gastos del Mes
@@ -973,8 +954,8 @@ export const App: React.FC = () => {
             type="button"
             onClick={() => setActiveTab('subscriptions')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'subscriptions'
-                ? 'bg-primary text-white'
-                : 'bg-surface-container-low text-on-surface-variant'
+              ? 'bg-primary text-white'
+              : 'bg-surface-container-low text-on-surface-variant'
               }`}
           >
             Suscripciones ({subscriptions.length})
@@ -983,8 +964,8 @@ export const App: React.FC = () => {
             type="button"
             onClick={() => setActiveTab('comparison')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'comparison'
-                ? 'bg-primary text-white'
-                : 'bg-surface-container-low text-on-surface-variant'
+              ? 'bg-primary text-white'
+              : 'bg-surface-container-low text-on-surface-variant'
               }`}
           >
             Comparativa
@@ -996,8 +977,8 @@ export const App: React.FC = () => {
               setActiveTab('annual');
             }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${activeTab === 'annual'
-                ? 'bg-primary text-white'
-                : 'bg-surface-container-low text-on-surface-variant'
+              ? 'bg-primary text-white'
+              : 'bg-surface-container-low text-on-surface-variant'
               }`}
           >
             Resumen Anual
