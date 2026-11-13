@@ -87,8 +87,8 @@ export const AuthView: React.FC = () => {
         {/* Cabecera de Marca G-Budget  */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-surface-container-lowest border border-slate-200/80 shadow-xs mx-auto">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-white">
-              <WalletCards className="w-5 h-5 text-secondary-fixed" />
+            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 shadow-xs">
+              <img src="/icon.jpg" alt="G-Budget" className="w-full h-full object-cover" />
             </div>
             <div className="text-left">
               <span className="block text-lg font-bold text-on-surface tracking-tight leading-none">

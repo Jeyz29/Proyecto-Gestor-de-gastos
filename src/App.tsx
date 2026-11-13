@@ -608,14 +608,18 @@ export const App: React.FC = () => {
             <div className={`flex items-center ${isSidebarCollapsed ? 'gap-1.5' : 'gap-3'} min-w-0 shrink-0`}>
               <div
                 className={`${
-                  isSidebarCollapsed ? 'w-7 h-7 rounded-md' : 'w-9 h-9 rounded-lg'
-                } bg-primary flex items-center justify-center text-white shadow-xs shrink-0 ${
+                  isSidebarCollapsed ? 'w-8 h-8 rounded-lg' : 'w-9 h-9 rounded-lg'
+                } overflow-hidden shadow-xs shrink-0 ${
                   isSidebarCollapsed ? 'cursor-pointer hover:opacity-90' : ''
                 }`}
                 onClick={() => isSidebarCollapsed && setIsSidebarCollapsed(false)}
                 title={isSidebarCollapsed ? 'G-B - Clic para desplegar' : undefined}
               >
-                <WalletCards className={isSidebarCollapsed ? 'w-4 h-4' : 'w-5 h-5'} />
+                <img
+                  src="/icon.jpg"
+                  alt="G-Budget"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <h1
                 className={`font-extrabold tracking-tight text-on-surface leading-none ${
@@ -826,8 +830,8 @@ export const App: React.FC = () => {
           {/* Izquierda: Logo móvil + Selector de Período Mensual */}
           <div className="flex items-center gap-3">
             <div className="flex lg:hidden items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
-                <WalletCards className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-xs">
+                <img src="/icon.jpg" alt="G-Budget" className="w-full h-full object-cover" />
               </div>
               <span className="font-extrabold text-sm text-on-surface">G-Budget</span>
             </div>
