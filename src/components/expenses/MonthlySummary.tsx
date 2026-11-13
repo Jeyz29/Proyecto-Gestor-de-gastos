@@ -204,7 +204,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Fila de 4 Tarjetas KPI (ClearLedger Direct 4-Column Metric Grid) */}
+      {/* Fila de 4 Tarjetas KPI */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {/* KPI 1: Gasto Total del Mes */}
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -571,7 +571,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
                     margin={{ top: 10, right: 8, left: -18, bottom: 0 }}
                   >
                     <defs>
-                      <linearGradient id="clearLedgerTeal" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="primaryTealGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#006a61" stopOpacity={0.35} />
                         <stop offset="95%" stopColor="#006a61" stopOpacity={0.02} />
                       </linearGradient>
@@ -613,7 +613,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
                       stroke="#006a61"
                       strokeWidth={2.5}
                       fillOpacity={1}
-                      fill="url(#clearLedgerTeal)"
+                      fill="url(#primaryTealGradient)"
                     />
                   </AreaChart>
                 </ResponsiveContainer>

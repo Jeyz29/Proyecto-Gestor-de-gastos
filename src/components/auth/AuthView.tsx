@@ -84,7 +84,7 @@ export const AuthView: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-center items-center px-4 py-10">
       <div className="w-full max-w-md space-y-6">
-        {/* Cabecera de Marca G-Budget (ClearLedger Direct) */}
+        {/* Cabecera de Marca G-Budget  */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-surface-container-lowest border border-slate-200/80 shadow-xs mx-auto">
             <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-white">
@@ -94,56 +94,19 @@ export const AuthView: React.FC = () => {
               <span className="block text-lg font-bold text-on-surface tracking-tight leading-none">
                 G-Budget
               </span>
-              <span className="block font-mono text-[10px] text-secondary font-medium uppercase tracking-wider mt-0.5">
-                ClearLedger Direct
-              </span>
             </div>
           </div>
           <h1 className="text-2xl font-bold text-on-surface tracking-tight pt-1">
-            Control Financiero & BCV
+            Gestor de gastos
           </h1>
           <p className="text-xs sm:text-sm text-on-surface-variant max-w-xs mx-auto">
-            Contabilidad personal multimoneda (USD, EUR y Bs.) con tasas históricas oficiales y protección RLS.
+            Contabilidad personal multimoneda con tasas históricas oficiales y protección RLS.
           </p>
         </div>
 
         {/* Tarjeta Principal de Autenticación */}
         <div className="bg-surface-container-lowest rounded-2xl border border-slate-200/90 shadow-[0_1px_8px_rgba(15,23,42,0.05)] p-6 sm:p-7 space-y-5">
           {/* Conmutador Iniciar Sesión / Crear Cuenta */}
-          <div className="grid grid-cols-2 gap-1 bg-surface-container-low p-1 rounded-xl text-xs sm:text-sm font-medium">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setError(null);
-                setMessage(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                mode === 'login'
-                  ? 'bg-surface-container-lowest text-on-surface shadow-xs font-semibold'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <LogIn className="w-4 h-4 text-secondary" />
-              Iniciar Sesión
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('signup');
-                setError(null);
-                setMessage(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                mode === 'signup'
-                  ? 'bg-surface-container-lowest text-on-surface shadow-xs font-semibold'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <UserPlus className="w-4 h-4 text-secondary" />
-              Crear Cuenta
-            </button>
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -202,8 +165,8 @@ export const AuthView: React.FC = () => {
                 {loading
                   ? 'Procesando...'
                   : mode === 'login'
-                  ? 'Acceder a G-Budget'
-                  : 'Registrar cuenta'}
+                    ? 'Acceder a G-Budget'
+                    : 'Acceder'}
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>
@@ -244,16 +207,11 @@ export const AuthView: React.FC = () => {
           </div>
         </div>
 
-        {/* Pie de Seguridad ClearLedger */}
+        {/* Pie de Seguridad */}
         <div className="flex items-center justify-center gap-4 font-mono text-[11px] text-on-surface-variant">
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
             Fiscal Safe · Supabase RLS
-          </span>
-          <span>•</span>
-          <span className="inline-flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-secondary" />
-            Tasas Oficiales BCV
           </span>
         </div>
       </div>

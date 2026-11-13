@@ -596,7 +596,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface text-on-surface flex">
-      {/* Barra Lateral Izquierda Fija (Desktop) - Estilo Stitch ClearLedger Direct */}
+      {/* Barra Lateral Izquierda Fija (Desktop) */}
       <aside
         className={`hidden lg:flex ${
           isSidebarCollapsed ? 'w-28' : 'w-64'
