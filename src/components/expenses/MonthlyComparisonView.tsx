@@ -682,7 +682,7 @@ export const MonthlyComparisonView: React.FC<MonthlyComparisonViewProps> = ({
       </div>
 
       {/* 3. Main Chart Section: Curva y Evolución Mensual */}
-      <div className="bg-surface-container-lowest rounded-2xl shadow-xs border border-slate-100 p-6 flex flex-col gap-6">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-xs border border-slate-100 p-4 sm:p-6 flex flex-col gap-5 sm:gap-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-on-surface shrink-0">
@@ -904,7 +904,7 @@ export const MonthlyComparisonView: React.FC<MonthlyComparisonViewProps> = ({
       {/* 4. Detailed Category and Subcategory Breakdown Table (Accordion UI) */}
       <div className="bg-surface-container-lowest rounded-2xl shadow-xs border border-slate-100 overflow-hidden flex flex-col">
         {/* Table Header & Controls */}
-        <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest border-b border-slate-100">
+        <div className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest border-b border-slate-100">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-secondary shrink-0" />

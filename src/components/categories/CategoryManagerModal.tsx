@@ -148,14 +148,14 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[88vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2">
-            <Tag className="w-5 h-5 text-indigo-600" />
-            <div>
-              <h2 className="text-lg font-semibold text-slate-800">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Tag className="w-5 h-5 text-indigo-600 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-800 truncate">
                 Categorías y Subcategorías
               </h2>
               <p className="text-xs text-slate-400">
@@ -165,17 +165,17 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
           {/* Formulario nueva categoría principal */}
           <form
             onSubmit={handleSubmitCategory}
-            className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3"
+            className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-100 space-y-3"
           >
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
               Nueva Categoría Principal
@@ -186,13 +186,13 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej: Gimnasio, Mascotas, Educación..."
-                className="flex-1 px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 min-w-0 px-3 sm:px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 required
               />
               <button
                 type="submit"
                 disabled={submitting || !name.trim()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 Crear
@@ -225,7 +225,7 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
 
           {/* Lista de categorías y sus subcategorías */}
           <div>
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-1 mb-2.5">
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Categorías Existentes ({categories.length})
               </h3>
@@ -426,16 +426,17 @@ export const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
                             type="text"
                             value={newSubName}
                             onChange={(e) => setNewSubName(e.target.value)}
-                            placeholder={`Nueva subcategoría en ${cat.name} (ej: Proteína, Frutas...)`}
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder={`Nueva subcategoría en ${cat.name}...`}
+                            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           <button
                             type="submit"
                             disabled={!newSubName.trim()}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            Subcategoría
+                            <span className="hidden sm:inline">Subcategoría</span>
+                            <span className="sm:hidden">Añadir</span>
                           </button>
                         </form>
                       </div>

@@ -205,7 +205,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
   return (
     <div className="space-y-6">
       {/* Fila de 4 Tarjetas KPI */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-5">
         {/* KPI 1: Gasto Total del Mes */}
         <div className="bg-surface-container-lowest rounded-xl p-4 border border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
@@ -304,7 +304,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-slate-100">
             <span className="text-xs text-on-surface-variant">
               Hoy equiv. a {formatCurrency(usdValueTodayOfVesPaid)}
             </span>
@@ -342,7 +342,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-slate-100">
             <span className="text-xs text-on-surface-variant">Día de mayor gasto</span>
             <span className="font-mono text-xs text-on-surface font-semibold">
               {dailyStats.peakDay.usd > 0
@@ -386,10 +386,10 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
       </section>
 
       {/* Fila Principal de Analítica y Visualización (60/40 Split de Stitch) */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
         {/* Columna Izquierda (7 cols): Cadencia de Gasto Diario (Daily Outflow Cadence) */}
-        <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl p-5 border border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl p-4 sm:p-5 border border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div>
               <h2 className="text-base font-semibold text-on-surface">
                 Cadencia de Gasto Diario
@@ -400,11 +400,11 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
             </div>
 
             {/* Pestañas del gráfico (Daily Trend | Cumulative | By Category) */}
-            <div className="flex items-center bg-surface-container-low rounded-lg p-1 font-mono text-xs">
+            <div className="w-full sm:w-auto flex items-center bg-surface-container-low rounded-lg p-1 font-mono text-xs">
               <button
                 type="button"
                 onClick={() => setChartMode('daily')}
-                className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-none text-center px-2 sm:px-2.5 py-1 rounded transition-all cursor-pointer ${
                   chartMode === 'daily'
                     ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-2xs'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -415,7 +415,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
               <button
                 type="button"
                 onClick={() => setChartMode('cumulative')}
-                className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-none text-center px-2 sm:px-2.5 py-1 rounded transition-all cursor-pointer ${
                   chartMode === 'cumulative'
                     ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-2xs'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -426,7 +426,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
               <button
                 type="button"
                 onClick={() => setChartMode('category')}
-                className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-none text-center px-2 sm:px-2.5 py-1 rounded transition-all cursor-pointer whitespace-nowrap ${
                   chartMode === 'category'
                     ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-2xs'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -438,7 +438,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
           </div>
 
           {/* Contenedor del Gráfico */}
-          <div className="w-full bg-surface-container-low/50 rounded-xl p-4 flex flex-col gap-2">
+          <div className="w-full bg-surface-container-low/50 rounded-xl p-3 sm:p-4 flex flex-col gap-2">
             <div className="flex flex-wrap justify-between items-center gap-2 font-mono text-[11px] text-on-surface-variant">
               <div className="flex flex-wrap items-center gap-3">
                 {chartMode === 'daily' && (
@@ -670,7 +670,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
           </div>
 
           {/* 3 Mini Tarjetas Inferiores de Resumen Diario (Quick Highlights de Stitch) */}
-          <div className="grid grid-cols-3 gap-2.5 pt-0.5 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-0.5 text-center">
             <div className="p-2.5 bg-surface-container-low rounded-lg">
               <p className="font-mono text-[11px] text-on-surface-variant">
                 Prom. Fin de Semana
@@ -687,7 +687,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
                 {formatCurrency(dailyStats.weekdayAvg)}
               </p>
             </div>
-            <div className="p-2.5 bg-surface-container-low rounded-lg">
+            <div className="col-span-2 sm:col-span-1 p-2.5 bg-surface-container-low rounded-lg">
               <p className="font-mono text-[11px] text-on-surface-variant">
                 Balance Cambiario
               </p>
@@ -705,7 +705,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
         </div>
 
         {/* Columna Derecha (5 cols): Distribución por Categorías y Subcategorías */}
-        <div className="lg:col-span-5 bg-surface-container-lowest rounded-xl p-5 border border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] flex flex-col gap-3.5">
+        <div className="lg:col-span-5 bg-surface-container-lowest rounded-xl p-4 sm:p-5 border border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.04)] flex flex-col gap-3.5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-on-surface">
@@ -795,7 +795,7 @@ export const MonthlySummary: React.FC<MonthlySummaryProps> = ({
                         />
                       </div>
 
-                      <div className="flex justify-between font-mono text-[11px] text-on-surface-variant mt-1">
+                      <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 font-mono text-[11px] text-on-surface-variant mt-1">
                         <span>{item.percentage.toFixed(1)}% del mes</span>
                         <span>
                           {categoryEur > 0 ? `${formatEuros(categoryEur)} · ` : ''}

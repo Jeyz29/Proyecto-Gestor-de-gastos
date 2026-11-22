@@ -350,11 +350,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   return (
     <div
       id="expense-entry-card"
-      className="bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100 p-6"
+      className="bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100 p-4 sm:p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
             <PlusCircle className="w-4 h-4" />
           </div>
           <div>
@@ -368,11 +368,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* Selector de moneda de entrada: USD, EUR o VES */}
-        <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg text-xs font-mono">
+        <div className="w-full sm:w-auto flex items-center gap-1 bg-surface-container-low p-1 rounded-lg text-[11px] sm:text-xs font-mono">
           <button
             type="button"
             onClick={() => setInputCurrency('USD')}
-            className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${inputCurrency === 'USD'
+            className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 rounded-md font-bold transition-all cursor-pointer whitespace-nowrap ${inputCurrency === 'USD'
                 ? 'bg-surface-container-lowest text-secondary shadow-2xs'
                 : 'text-on-surface-variant hover:text-on-surface'
               }`}
@@ -382,29 +382,30 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
           <button
             type="button"
             onClick={() => setInputCurrency('EUR')}
-            className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${inputCurrency === 'EUR'
+            className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 rounded-md font-bold transition-all cursor-pointer whitespace-nowrap ${inputCurrency === 'EUR'
                 ? 'bg-surface-container-lowest text-secondary shadow-2xs'
                 : 'text-on-surface-variant hover:text-on-surface'
               }`}
           >
-            EUR (€ BCV)
+            EUR (€<span className="hidden sm:inline"> BCV</span>)
           </button>
           <button
             type="button"
             onClick={() => setInputCurrency('VES')}
-            className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${inputCurrency === 'VES'
+            className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 rounded-md font-bold transition-all cursor-pointer whitespace-nowrap ${inputCurrency === 'VES'
                 ? 'bg-surface-container-lowest text-secondary shadow-2xs'
                 : 'text-on-surface-variant hover:text-on-surface'
               }`}
           >
-            Bolívares (Bs.)
+            <span className="sm:hidden">Bs. (VES)</span>
+            <span className="hidden sm:inline">Bolívares (Bs.)</span>
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 sm:grid-cols-6 xl:grid-cols-12 gap-3 sm:gap-3.5">
         {/* Concepto / Descripción con Autocompletado Inteligente */}
-        <div className="sm:col-span-3 relative" ref={suggestionContainerRef}>
+        <div className="col-span-2 sm:col-span-6 xl:col-span-3 relative" ref={suggestionContainerRef}>
           <label className="block text-[11px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold mb-1">
             Descripción / Concepto
           </label>
@@ -520,7 +521,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* Monto (en USD, EUR o Bs.) */}
-        <div className="sm:col-span-2">
+        <div className="col-span-1 sm:col-span-3 xl:col-span-2">
           <label className="block text-[11px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold mb-1">
             Monto ({currencySymbol})
           </label>
@@ -538,7 +539,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* Categoría Principal */}
-        <div className="sm:col-span-2">
+        <div className="col-span-1 sm:col-span-2 xl:col-span-2">
           <div className="flex items-center justify-between mb-1">
             <label className="block text-[11px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
               Categoría
@@ -568,7 +569,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* Subcategoría */}
-        <div className="sm:col-span-2">
+        <div className="col-span-1 sm:col-span-2 xl:col-span-2">
           <label className="block text-[11px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold mb-1">
             Subcategoría
           </label>
@@ -587,7 +588,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* Fecha */}
-        <div className="sm:col-span-2">
+        <div className="col-span-1 sm:col-span-3 xl:col-span-2">
           <label className="block text-[11px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold mb-1">
             Fecha Contable
           </label>
@@ -601,7 +602,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
 
         {/* Botón Guardar */}
-        <div className="sm:col-span-1 flex items-end">
+        <div className="col-span-2 sm:col-span-2 xl:col-span-1 flex items-end">
           <button
             type="submit"
             disabled={submitting || loadingDateRate}

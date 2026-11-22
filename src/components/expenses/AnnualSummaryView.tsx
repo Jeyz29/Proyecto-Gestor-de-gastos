@@ -319,7 +319,7 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
     <div className="space-y-6">
       {/* Cabecera de Control Anual */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
             <Calendar className="w-5 h-5" />
           </div>
@@ -333,7 +333,7 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {/* Botón para incluir/excluir suscripciones en el total anual */}
           <button
             type="button"
@@ -491,7 +491,7 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
       </div>
 
       {/* 2. Panel de Pérdida o Ganancia Cambiaria Anual (BCV) */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
@@ -588,8 +588,8 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
       {/* 3. Gráficos Interactivos Anuales (Barras de 12 Meses + Dona de Categorías) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Gráfico de Barras: Los 12 Meses del Año */}
-        <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-indigo-600" />
               <h3 className="text-sm font-semibold text-slate-800">
@@ -665,7 +665,7 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
         </div>
 
         {/* Gráfico de Dona: Distribución Anual por Categorías */}
-        <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+        <div className="lg:col-span-5 bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
           <div className="flex items-center gap-2 mb-4">
             <PieChartIcon className="w-5 h-5 text-indigo-600" />
             <h3 className="text-sm font-semibold text-slate-800">
@@ -742,7 +742,7 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
 
       {/* 4. Desglose Completo de Categorías y Subcategorías en el Año */}
       {annualCategoryBreakdown.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">
             Detalle Anual Acumulado por Categoría y Subcategoría ({selectedYear})
           </h3>

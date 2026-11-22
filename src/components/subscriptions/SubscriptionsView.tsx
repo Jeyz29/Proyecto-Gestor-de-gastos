@@ -270,19 +270,19 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
       </div>
 
       {/* 2. Formulario para Añadir Suscripción Recurrente o Anual */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5">
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-            <PlusCircle className="w-5 h-5 text-indigo-600" />
+            <PlusCircle className="w-5 h-5 text-indigo-600 shrink-0" />
             Nueva Suscripción o Pago Recurrente
           </h2>
 
           {/* Selector de moneda */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+          <div className="w-full sm:w-auto flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-[11px] sm:text-xs">
             <button
               type="button"
               onClick={() => setInputCurrency('USD')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none text-center px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                 inputCurrency === 'USD'
                   ? 'bg-white text-indigo-600 shadow-2xs'
                   : 'text-slate-600'
@@ -293,18 +293,18 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
             <button
               type="button"
               onClick={() => setInputCurrency('EUR')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none text-center px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                 inputCurrency === 'EUR'
                   ? 'bg-white text-indigo-600 shadow-2xs'
                   : 'text-slate-600'
               }`}
             >
-              EUR (€ BCV)
+              EUR (€<span className="hidden sm:inline"> BCV</span>)
             </button>
             <button
               type="button"
               onClick={() => setInputCurrency('VES')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none text-center px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                 inputCurrency === 'VES'
                   ? 'bg-white text-indigo-600 shadow-2xs'
                   : 'text-slate-600'
@@ -315,9 +315,9 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 sm:grid-cols-6 xl:grid-cols-12 gap-3 sm:gap-3.5">
           {/* Nombre del servicio */}
-          <div className="sm:col-span-3">
+          <div className="col-span-2 sm:col-span-6 xl:col-span-3">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Servicio / Suscripción
             </label>
@@ -332,7 +332,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
 
           {/* Monto */}
-          <div className="sm:col-span-2">
+          <div className="col-span-1 sm:col-span-3 xl:col-span-2">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Monto ({inputCurrency === 'USD' ? '$' : inputCurrency === 'EUR' ? '€' : 'Bs.'})
             </label>
@@ -349,7 +349,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
 
           {/* Frecuencia: Mensual o Anual */}
-          <div className="sm:col-span-2">
+          <div className="col-span-1 sm:col-span-3 xl:col-span-2">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Ciclo de Cobro
             </label>
@@ -364,7 +364,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
 
           {/* Categoría */}
-          <div className="sm:col-span-2">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-2">
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-medium text-slate-500">Categoría</label>
               <button
@@ -389,7 +389,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
 
           {/* Subcategoría */}
-          <div className="sm:col-span-2">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-2">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Subcategoría
             </label>
@@ -408,7 +408,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
 
           {/* Día de cobro */}
-          <div className="sm:col-span-1">
+          <div className="col-span-2 sm:col-span-2 xl:col-span-1">
             <label className="block text-xs font-medium text-slate-500 mb-1">
               Día
             </label>
@@ -423,11 +423,11 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
 
           {/* Botón de modo (Sumar al gasto mensual vs Separar en gasto anual) + Botón Guardar */}
-          <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <div className="col-span-2 sm:col-span-6 xl:col-span-12 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIncludeInMonthly((v) => !v)}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer text-left ${
                 includeInMonthly
                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                   : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -435,7 +435,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
             >
               {includeInMonthly ? (
                 <>
-                  <ToggleRight className="w-4 h-4 text-indigo-600" />
+                  <ToggleRight className="w-4 h-4 text-indigo-600 shrink-0" />
                   <span>
                     Modo: <strong>Sumar al Gasto Mensual</strong>{' '}
                     {billingCycle === 'annual' ? '(se prorratea ÷ 12 cada mes)' : ''}
@@ -443,7 +443,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                 </>
               ) : (
                 <>
-                  <ToggleLeft className="w-4 h-4 text-amber-600" />
+                  <ToggleLeft className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
                     Modo: <strong>Mantener separado en Gasto Anual</strong> (no afecta el total mensual)
                   </span>
@@ -454,7 +454,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium text-sm rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium text-sm rounded-xl transition-colors cursor-pointer"
             >
               {submitting ? 'Guardando...' : '+ Guardar Suscripción'}
             </button>
@@ -470,7 +470,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
 
       {/* 3. Listado de Suscripciones con Botón Individual para Sumar al Mes o Separar al Año */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-800">
               Mis Suscripciones y Pagos Recurrentes ({subscriptions.length})
@@ -495,7 +495,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               return (
                 <div
                   key={sub.id}
-                  className="px-6 py-4 flex flex-wrap items-center justify-between gap-4 hover:bg-slate-50/80 transition-colors"
+                  className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 sm:gap-4 hover:bg-slate-50/80 transition-colors"
                 >
                   {/* Info de la suscripción */}
                   <div className="flex items-center gap-3.5 min-w-0">
@@ -544,7 +544,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   </div>
 
                   {/* Controles: Botón de inclusión mensual vs anual + Monto + Eliminar */}
-                  <div className="flex items-center gap-4 ml-auto">
+                  <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-4 sm:ml-auto">
                     {/* Botón interactivo para el usuario */}
                     <button
                       type="button"

@@ -807,18 +807,42 @@ export const App: React.FC = () => {
           } min-w-0 flex flex-col transition-all duration-200 ease-in-out`}
       >
         {/* Top Header Fijo */}
-        <header className="sticky top-0 z-30 h-16 bg-surface/85 backdrop-blur-md border-b border-slate-200/60 px-4 sm:px-8 flex items-center justify-between gap-3">
-          {/* Izquierda: Logo móvil + Selector de Período Mensual */}
-          <div className="flex items-center gap-3">
-            <div className="flex lg:hidden items-center gap-2">
+        <header className="sticky top-0 z-30 min-h-16 py-2 sm:py-0 sm:h-16 bg-surface/85 backdrop-blur-md border-b border-slate-200/60 px-3 sm:px-6 lg:px-8 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-3">
+          {/* Fila 1 Móvil / Izquierda Desktop: Logo móvil + Acciones rápidas móvil + Selector de Mes */}
+          <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
+            <div className="flex lg:hidden items-center gap-2 shrink-0">
               <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-xs">
                 <img src="/icon.jpg" alt="G-Budget" className="w-full h-full object-cover" />
               </div>
               <span className="font-extrabold text-sm text-on-surface">G-Budget</span>
             </div>
 
-            {/* Selector de Mes estilo Stitch */}
-            <div className="flex items-center bg-surface-container-low p-1 rounded-xl border border-slate-200/50">
+            {/* Acciones móviles en fila superior (< sm) */}
+            <div className="flex sm:hidden items-center gap-1.5">
+              {isDemoUser && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  DEMO
+                </span>
+              )}
+              <button
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="inline-flex items-center justify-center p-2 rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface cursor-pointer"
+                title="Categorías"
+              >
+                <Tags className="w-3.5 h-3.5 text-secondary" />
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="inline-flex items-center justify-center p-2 rounded-lg bg-surface-container-low text-xs font-semibold text-slate-600 hover:text-error cursor-pointer"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Selector de Mes estilo Stitch (visible en sm+ aquí) */}
+            <div className="hidden sm:flex items-center bg-surface-container-low p-1 rounded-xl border border-slate-200/50">
               <button
                 onClick={() => setSelectedMonth((m) => shiftMonth(m, -1))}
                 className="p-1.5 hover:bg-surface-container-lowest rounded-lg transition-all text-slate-600 cursor-pointer"
@@ -826,7 +850,7 @@ export const App: React.FC = () => {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 text-xs sm:text-sm font-bold text-on-surface min-w-34 text-center">
+              <span className="px-2 sm:px-3 text-xs sm:text-sm font-bold text-on-surface min-w-28 sm:min-w-34 text-center">
                 {formatMonthLabel(selectedMonth)}
               </span>
               <button
@@ -846,21 +870,42 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          {/* Derecha: Widget de Tasas BCV + Acciones Móviles */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary-container/35 border border-secondary/20 text-xs">
-              <span className="font-mono font-bold text-secondary hidden sm:inline">
+          {/* Derecha Desktop/Tablet + Fila 2 Móvil: Selector de Mes (< sm) + Widget de Tasas BCV + Acciones Tablet */}
+          <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-2">
+            {/* Selector de Mes compacto para móviles pequeños (< sm) */}
+            <div className="flex sm:hidden items-center bg-surface-container-low p-0.5 rounded-lg border border-slate-200/50">
+              <button
+                onClick={() => setSelectedMonth((m) => shiftMonth(m, -1))}
+                className="p-1 hover:bg-surface-container-lowest rounded-md transition-all text-slate-600 cursor-pointer"
+                title="Mes anterior"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="px-1.5 text-[11px] font-bold text-on-surface min-w-24 text-center truncate">
+                {formatMonthLabel(selectedMonth)}
+              </span>
+              <button
+                onClick={() => setSelectedMonth((m) => shiftMonth(m, 1))}
+                className="p-1 hover:bg-surface-container-lowest rounded-md transition-all text-slate-600 cursor-pointer"
+                title="Mes siguiente"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-secondary-container/35 border border-secondary/20 text-[11px] sm:text-xs">
+              <span className="font-mono font-bold text-secondary hidden md:inline">
                 BCV:
               </span>
               {isEditingRate ? (
-                <div className="flex items-center gap-1.5 font-mono">
+                <div className="flex flex-wrap items-center gap-1.5 font-mono">
                   <span className="text-secondary font-bold">$:</span>
                   <input
                     type="number"
                     step="0.01"
                     value={manualUsdInput}
                     onChange={(e) => setManualUsdInput(e.target.value)}
-                    className="w-18 px-1.5 py-0.5 bg-white border border-secondary/40 rounded text-xs text-on-surface focus:outline-none"
+                    className="w-16 sm:w-18 px-1.5 py-0.5 bg-white border border-secondary/40 rounded text-xs text-on-surface focus:outline-none"
                     autoFocus
                   />
                   <span className="text-secondary font-bold">€:</span>
@@ -869,7 +914,7 @@ export const App: React.FC = () => {
                     step="0.01"
                     value={manualEurInput}
                     onChange={(e) => setManualEurInput(e.target.value)}
-                    className="w-18 px-1.5 py-0.5 bg-white border border-secondary/40 rounded text-xs text-on-surface focus:outline-none"
+                    className="w-16 sm:w-18 px-1.5 py-0.5 bg-white border border-secondary/40 rounded text-xs text-on-surface focus:outline-none"
                   />
                   <button
                     onClick={handleSaveManualRate}
@@ -888,11 +933,11 @@ export const App: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <span className="font-mono font-bold text-on-surface font-tabular">
+                  <span className="font-mono font-bold text-on-surface font-tabular whitespace-nowrap">
                     $: {bcvInfo.rate > 0 ? formatBolivares(bcvInfo.rate) : '...'}
                   </span>
                   <span className="text-secondary/30 hidden sm:inline">|</span>
-                  <span className="font-mono font-bold text-on-surface font-tabular hidden sm:inline">
+                  <span className="font-mono font-bold text-on-surface font-tabular hidden sm:inline whitespace-nowrap">
                     €: {bcvInfo.eurRate > 0 ? formatBolivares(bcvInfo.eurRate) : '...'}
                   </span>
                   <button
@@ -922,7 +967,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface cursor-pointer"
+              className="hidden sm:inline-flex lg:hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface cursor-pointer"
               title="Categorías"
             >
               <Tags className="w-3.5 h-3.5 text-secondary" />
@@ -930,7 +975,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={handleSignOut}
-              className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-slate-600 hover:text-error cursor-pointer"
+              className="hidden sm:inline-flex lg:hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-slate-600 hover:text-error cursor-pointer"
               title="Cerrar sesión"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -939,7 +984,7 @@ export const App: React.FC = () => {
         </header>
 
         {/* Barra de Navegación Móvil (< lg) */}
-        <div className="lg:hidden px-4 pt-3 flex items-center gap-1.5 overflow-x-auto">
+        <div className="lg:hidden px-3 sm:px-6 pt-3 pb-1 flex items-center gap-1.5 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('monthly')}
@@ -986,7 +1031,7 @@ export const App: React.FC = () => {
         </div>
 
         {/* Contenido Principal */}
-        <main className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6 pb-16">
+        <main className="p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-5 sm:space-y-6 pb-16">
           {backendError && (
             <div className="bg-error-container/50 border border-error/20 text-on-error-container px-4 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-between gap-4">
               <span>
@@ -1018,7 +1063,7 @@ export const App: React.FC = () => {
           {activeTab === 'monthly' ? (
             <>
               {/* Sub-header Controller Bar (Adaptado de Stitch Monthly Expense Manager) */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest p-4 sm:p-5 rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100">
                 <div className="flex flex-wrap items-center gap-4">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-widest text-secondary font-bold block">
@@ -1115,7 +1160,7 @@ export const App: React.FC = () => {
                 </div>
 
                 {/* Columna Derecha (4 cols): Tarjeta de Suscripciones Recurrentes (Estilo Stitch) */}
-                <div className="xl:col-span-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100">
+                <div className="xl:col-span-4 bg-surface-container-lowest p-4 sm:p-6 rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-base font-bold text-on-surface">

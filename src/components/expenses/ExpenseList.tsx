@@ -292,7 +292,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   return (
     <div className="bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_rgba(11,28,48,0.03)] border border-slate-100 overflow-hidden">
       {/* Cabecera estilo Stitch Monthly Expense Ledger */}
-      <div className="px-6 py-5 border-b border-slate-100 space-y-3.5">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -480,7 +480,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                 <form
                   key={expense.id}
                   onSubmit={(e) => handleSaveEdit(e, expense.id)}
-                  className="p-5 bg-surface-container-low/60 space-y-3.5 transition-all"
+                  className="p-4 sm:p-5 bg-surface-container-low/60 space-y-3.5 transition-all"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-mono font-bold text-secondary uppercase tracking-wider">
@@ -539,8 +539,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div className="sm:col-span-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-6 xl:grid-cols-12 gap-3">
+                    <div className="col-span-2 sm:col-span-6 xl:col-span-3">
                       <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
                         Descripción
                       </label>
@@ -553,7 +553,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div className="col-span-1 sm:col-span-3 xl:col-span-2">
                       <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
                         Monto ({editCurrency === 'USD' ? '$' : editCurrency === 'EUR' ? '€' : 'Bs.'})
                       </label>
@@ -568,7 +568,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div className="col-span-1 sm:col-span-2 xl:col-span-2">
                       <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
                         Categoría
                       </label>
@@ -588,7 +588,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                       </select>
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div className="col-span-1 sm:col-span-2 xl:col-span-2">
                       <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
                         Subcategoría
                       </label>
@@ -606,7 +606,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                       </select>
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div className="col-span-1 sm:col-span-3 xl:col-span-2">
                       <label className="block text-[11px] font-mono uppercase text-on-surface-variant mb-1">
                         Fecha
                       </label>
@@ -619,7 +619,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                       />
                     </div>
 
-                    <div className="sm:col-span-1 flex items-end justify-end gap-1.5">
+                    <div className="col-span-2 sm:col-span-2 xl:col-span-1 flex items-end justify-end gap-1.5">
                       <button
                         type="submit"
                         disabled={saving || loadingRate}
@@ -707,7 +707,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             return (
               <div
                 key={expense.id}
-                className="px-6 py-4 flex flex-col sm:grid sm:grid-cols-12 items-start sm:items-center gap-2 sm:gap-3 hover:bg-surface-container-low/40 transition-colors group"
+                className="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:grid sm:grid-cols-12 items-start sm:items-center gap-2 sm:gap-3 hover:bg-surface-container-low/40 transition-colors group"
               >
                 {/* Col 1-2: Fecha */}
                 <div
@@ -718,7 +718,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                 </div>
 
                 {/* Col 3-6: Concepto & Tasa BCV */}
-                <div className="sm:col-span-4 min-w-0">
+                <div className="w-full sm:w-auto sm:col-span-4 min-w-0">
                   <p className="text-sm font-semibold text-on-surface truncate">
                     {expense.description}
                   </p>
