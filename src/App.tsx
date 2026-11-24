@@ -250,8 +250,21 @@ export const App: React.FC = () => {
     id: string,
     includeInMonthly: boolean
   ) => {
-    const updated = await api.toggleSubscriptionMonthly(id, includeInMonthly);
-    setSubscriptions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    const prevSubscriptions = subscriptions;
+    const nextValue = includeInMonthly ? 1 : 0;
+
+    // Actualización optimista inmediata (0 ms de delay en la interfaz)
+    setSubscriptions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, include_in_monthly: nextValue } : s))
+    );
+
+    try {
+      const updated = await api.toggleSubscriptionMonthly(id, includeInMonthly);
+      setSubscriptions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    } catch (err) {
+      console.error('Error al actualizar suscripción:', err);
+      setSubscriptions(prevSubscriptions);
+    }
   };
 
   const handleDeleteSubscription = async (id: string) => {
@@ -266,15 +279,32 @@ export const App: React.FC = () => {
   }, [subscriptions]);
 
   const handleToggleGlobalAnnualInMonthly = async () => {
-    const targetState = !includeAnnualInMonthlyGlobal;
     const annuals = subscriptions.filter((s) => s.billing_cycle === 'annual');
-    const updatedList = await Promise.all(
-      annuals.map((s) => api.toggleSubscriptionMonthly(s.id, targetState))
-    );
-    const updatedMap = new Map(updatedList.map((u) => [u.id, u]));
+    if (annuals.length === 0) return;
+
+    const prevSubscriptions = subscriptions;
+    const targetState = !includeAnnualInMonthlyGlobal;
+    const nextValue = targetState ? 1 : 0;
+
+    // Actualización optimista inmediata en la UI antes de esperar la red
     setSubscriptions((prev) =>
-      prev.map((s) => updatedMap.get(s.id) || s)
+      prev.map((s) =>
+        s.billing_cycle === 'annual' ? { ...s, include_in_monthly: nextValue } : s
+      )
     );
+
+    try {
+      const updatedList = await Promise.all(
+        annuals.map((s) => api.toggleSubscriptionMonthly(s.id, targetState))
+      );
+      const updatedMap = new Map(updatedList.map((u) => [u.id, u]));
+      setSubscriptions((prev) =>
+        prev.map((s) => updatedMap.get(s.id) || s)
+      );
+    } catch (err) {
+      console.error('Error al actualizar suscripciones anuales:', err);
+      setSubscriptions(prevSubscriptions);
+    }
   };
 
   // ---- Gestión de Gastos ----
