@@ -11,6 +11,11 @@ import {
   PieChart as PieChartIcon,
   BarChart3,
   CornerDownRight,
+  CheckCircle2,
+  Circle,
+  Wallet,
+  ArrowDown,
+  Layers,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -39,7 +44,7 @@ import {
 interface AnnualSummaryViewProps {
   selectedYear: number;
   onSelectYear: (year: number) => void;
-   onSelectMonthAndGoToMonthly: (yearMonth: string) => void;
+  onSelectMonthAndGoToMonthly: (yearMonth: string) => void;
   categories: Category[];
   subcategories: Subcategory[];
   history: MonthlyCategoryHistory[];
@@ -82,8 +87,6 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
   selectedYear,
   onSelectYear,
   onSelectMonthAndGoToMonthly,
-  categories,
-  subcategories,
   history,
   subscriptions,
   currentBcvRate,
@@ -155,7 +158,6 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
     }
 
     for (const m of months) {
-      // Solo sumamos la cuota mensual de suscripciones a meses que tengan actividad o si el usuario quiere ver la proyección
       const subsToAdd =
         includeSubscriptions && m.punctualUsd > 0
           ? subscriptionsAnnualData.monthlySubsTotalPerMonth
@@ -201,15 +203,11 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
       }
     }
 
-    // Análisis Cambiario Anual (Pérdida o Ganancia Cambiaria respecto al BCV actual)
-    // Compara los Bolívares realmente desembolsados en el año vs. cuánto valen hoy en USD a la tasa BCV actual
     const usdEquivalentAtTodayRate =
       currentBcvRate > 0 && totalHistoricalVes > 0
         ? totalHistoricalVes / currentBcvRate
         : totalPunctualUsd;
 
-    // Si gastaste $1,000 en su momento (ej. Bs. 850,000 a tasa 850) y hoy esos Bs. 850,000 divididos entre tasa 880 son $965.90,
-    // la diferencia cambiaria es $34.10 (o en Bs: hoy $1,000 costarían Bs. 880,000, es decir +Bs. 30,000 de diferencia cambiaria).
     const exchangeDiffUsd = totalPunctualUsd - usdEquivalentAtTodayRate;
     const vesAtTodayRateForSameUsd =
       currentBcvRate > 0 ? totalPunctualUsd * currentBcvRate : totalHistoricalVes;
@@ -222,12 +220,15 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
         ? totalHistoricalVes / totalPunctualUsd
         : currentBcvRate;
 
+    const activeMonthNames = activeMonths.map((m) => m.fullName);
+
     return {
       totalPunctualUsd,
       totalWithSubsUsd,
       totalHistoricalVes,
       totalTransactions,
       activeMonthsCount,
+      activeMonthNames,
       averageMonthlyUsd,
       highestMonth,
       lowestMonth,
@@ -315,58 +316,74 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
       ? totalVesCurrent / currentBcvEurRate
       : 0;
 
+  const scrollToDetail = () => {
+    const el = document.getElementById('annual-category-detail');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Cabecera de Control Anual */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
-            <Calendar className="w-5 h-5" />
+    <div className="flex flex-col w-full gap-6 pb-8">
+      {/* Banner Principal y Selector de Año (Estilo Stitch Resumen Anual) */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-surface-container-lowest p-5 rounded-2xl shadow-xs border border-slate-100 relative overflow-hidden">
+        <div className="flex items-start sm:items-center gap-3.5 z-10">
+          <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface shadow-2xs shrink-0">
+            <Calendar className="w-6 h-6 text-secondary" />
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800">
-              Resumen Anual y Balance Cambiario ({selectedYear})
-            </h2>
-            <p className="text-xs text-slate-400">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-xl text-on-surface font-bold tracking-tight">
+                Resumen Anual y Balance Cambiario ({selectedYear})
+              </h1>
+              <span className="hidden sm:inline-block px-2 py-0.5 bg-secondary-fixed text-[#00201d] font-mono text-xs rounded-md font-medium">
+                Oficial
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-on-surface-variant mt-0.5">
               Consolidado de todo el año, gráficos de evolución y efecto de la tasa BCV
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-          {/* Botón para incluir/excluir suscripciones en el total anual */}
+        {/* Controles: Toggle Suscripciones + Selector de Año */}
+        <div className="flex flex-wrap items-center gap-3 self-stretch sm:self-auto justify-end z-10">
           <button
             type="button"
             onClick={() => setIncludeSubscriptions((v) => !v)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
-              includeSubscriptions
-                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                : 'bg-slate-100 text-slate-600 border-slate-200'
-            }`}
+            className="flex items-center gap-2 px-3 py-1.5 bg-surface-container text-on-surface rounded-lg font-mono text-xs sm:text-sm font-medium hover:bg-surface-container-high transition-colors shadow-2xs cursor-pointer"
           >
-            {includeSubscriptions
-              ? 'Incluyendo Suscripciones'
-              : 'Solo Gastos Puntuales'}
+            {includeSubscriptions ? (
+              <CheckCircle2 className="w-4 h-4 text-secondary shrink-0" />
+            ) : (
+              <Circle className="w-4 h-4 text-outline shrink-0" />
+            )}
+            <span>
+              {includeSubscriptions
+                ? 'Incluyendo Suscripciones'
+                : 'Solo Gastos Puntuales'}
+            </span>
           </button>
 
-          {/* Selector de Año */}
-          <div className="flex items-center bg-slate-100 rounded-xl p-1">
+          <div className="flex items-center bg-surface-container rounded-lg p-1 shadow-2xs">
             <button
               type="button"
               onClick={() => onSelectYear(selectedYear - 1)}
-              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer"
+              aria-label="Año anterior"
               title="Año anterior"
+              className="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-4 text-sm font-bold text-slate-800">
+            <span className="px-3 font-mono text-sm font-bold text-on-surface font-tabular">
               {selectedYear}
             </span>
             <button
               type="button"
               onClick={() => onSelectYear(selectedYear + 1)}
-              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all cursor-pointer"
+              aria-label="Año siguiente"
               title="Año siguiente"
+              className="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -374,38 +391,50 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
         </div>
       </div>
 
-      {/* 1. Tarjetas de KPIs Anuales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Gastado en el Año */}
-        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 text-white shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-medium text-indigo-100 uppercase tracking-wider">
-            Gasto Total {selectedYear}
-          </span>
-          <div className="my-2">
-            <div className="text-2xl font-bold">
+      {/* Fila 1: 4 Tarjetas KPI Anuales */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Card 1: Gasto Total (Hero Oscuro estilo Stitch) */}
+        <div className="bg-primary-container text-on-primary rounded-xl p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-on-primary-container">
+              Gasto Total {selectedYear}
+            </span>
+            <Wallet className="w-4 h-4 text-secondary-fixed" />
+          </div>
+
+          <div className="my-3 font-tabular">
+            <div className="font-mono text-2xl sm:text-[2rem] text-on-primary font-bold tracking-tight leading-none">
               {formatCurrency(annualKpis.totalWithSubsUsd)}
             </div>
-            <div className="text-xs text-indigo-100 mt-1">
-              {totalEurCurrent > 0 ? `${formatEuros(totalEurCurrent)} · ` : ''}
+            <div className="font-mono text-xs text-on-primary-container mt-1.5 font-medium">
+              {totalEurCurrent > 0 ? `${formatEuros(totalEurCurrent)} • ` : ''}
               {formatBolivares(totalVesCurrent)}
             </div>
           </div>
-          <span className="text-[11px] text-indigo-200">
-            {annualKpis.totalTransactions} movimientos en {annualKpis.activeMonthsCount}{' '}
-            {annualKpis.activeMonthsCount === 1 ? 'mes activo' : 'meses activos'}
-          </span>
+
+          <div className="pt-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/10 text-on-primary font-mono text-[11px] rounded-lg">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary-fixed shrink-0" />
+              {annualKpis.totalTransactions} movimientos en {annualKpis.activeMonthsCount}{' '}
+              {annualKpis.activeMonthsCount === 1 ? 'mes activo' : 'meses activos'}
+            </span>
+          </div>
         </div>
 
-        {/* Promedio Mensual */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Promedio por Mes Activo
-          </span>
-          <div className="my-2">
-            <div className="text-2xl font-bold text-slate-800">
+        {/* Card 2: Promedio por Mes Activo */}
+        <div className="bg-surface-container-lowest rounded-xl p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs text-on-surface-variant font-semibold uppercase tracking-wider">
+              Promedio por Mes Activo
+            </span>
+            <BarChart3 className="w-4 h-4 text-on-surface-variant" />
+          </div>
+
+          <div className="my-3 font-tabular">
+            <div className="font-mono text-2xl sm:text-[2rem] text-on-surface font-bold tracking-tight leading-none">
               {formatCurrency(annualKpis.averageMonthlyUsd)}
             </div>
-            <div className="text-xs text-slate-400 mt-1">
+            <div className="font-mono text-xs text-on-surface-variant mt-1.5">
               ≈{' '}
               {formatBolivares(
                 currentBcvRate > 0 ? annualKpis.averageMonthlyUsd * currentBcvRate : 0
@@ -413,170 +442,204 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
               / mes
             </div>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Calculado sobre {annualKpis.activeMonthsCount || 1} mes(es) con registros
-          </span>
+
+          <div className="pt-2">
+            <span className="text-xs text-on-surface-variant">
+              Calculado sobre {annualKpis.activeMonthsCount || 1} mes(es) con registros
+            </span>
+          </div>
         </div>
 
-        {/* Mes Más Costoso vs Más Económico */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        {/* Card 3: Mes Pico del Año */}
+        <div className="bg-surface-container-lowest rounded-xl p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            <span className="font-mono text-xs text-on-surface-variant font-semibold uppercase tracking-wider">
               Mes Pico del Año
             </span>
-            <Flame className="w-4 h-4 text-red-500" />
+            <Flame className="w-5 h-5 text-[#f83256]" />
           </div>
+
           {annualKpis.highestMonth ? (
             <>
-              <div className="my-2">
-                <div className="text-lg font-bold text-slate-800">
-                  {annualKpis.highestMonth.fullName}:{' '}
-                  <span className="text-red-600">
+              <div className="my-3">
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-lg font-semibold text-on-surface">
+                    {annualKpis.highestMonth.fullName}:
+                  </span>
+                  <span className="font-mono text-xl text-error font-bold leading-none font-tabular">
                     {formatCurrency(annualKpis.highestMonth.totalUsd)}
                   </span>
                 </div>
                 {annualKpis.lowestMonth &&
                   annualKpis.lowestMonth.monthKey !==
                     annualKpis.highestMonth.monthKey && (
-                    <div className="text-xs text-emerald-600 mt-1">
+                    <div className="font-mono text-xs text-secondary font-medium mt-1.5">
                       Mes más bajo: {annualKpis.lowestMonth.fullName} (
                       {formatCurrency(annualKpis.lowestMonth.totalUsd)})
                     </div>
                   )}
               </div>
-              <span className="text-[11px] text-slate-400">
-                Haz clic en las barras inferiores para ir al mes
-              </span>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    annualKpis.highestMonth &&
+                    onSelectMonthAndGoToMonthly(annualKpis.highestMonth.monthKey)
+                  }
+                  className="text-xs text-on-surface-variant hover:text-on-surface cursor-pointer inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>Haz clic en las barras para ir al mes</span>
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </>
           ) : (
-            <div className="text-xs text-slate-400 my-auto">Sin datos en {selectedYear}</div>
+            <div className="text-xs text-on-surface-variant my-auto py-4">
+              Sin datos registrados en {selectedYear}
+            </div>
           )}
         </div>
 
-        {/* Categoría Mayor del Año */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        {/* Card 4: Mayor Rubro del Año */}
+        <div className="bg-surface-container-lowest rounded-xl p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            <span className="font-mono text-xs text-on-surface-variant font-semibold uppercase tracking-wider">
               Mayor Rubro del Año
             </span>
-            <Award className="w-4 h-4 text-amber-500" />
+            <Award className="w-5 h-5 text-[#d97706]" />
           </div>
+
           {topCategory ? (
             <>
-              <div className="my-2">
-                <div className="flex items-center gap-2">
+              <div className="my-3">
+                <div className="flex items-center gap-2 mb-1">
                   <span
-                    className="w-3 h-3 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: topCategory.color }}
                   />
-                  <span className="text-base font-bold text-slate-800 truncate">
+                  <span className="text-lg font-bold text-on-surface leading-tight truncate">
                     {topCategory.name}
                   </span>
                 </div>
-                <div className="text-lg font-bold text-indigo-600 mt-0.5">
+                <div className="font-mono text-xl text-on-surface font-semibold font-tabular">
                   {formatCurrency(topCategory.totalUsd)}{' '}
-                  <span className="text-xs font-normal text-slate-400">
+                  <span className="font-mono text-xs text-on-surface-variant font-normal">
                     ({topCategory.percentage.toFixed(0)}%)
                   </span>
                 </div>
               </div>
-              <span className="text-[11px] text-slate-400">
-                {topCategory.count} movimientos en el año
-              </span>
+
+              <div className="pt-2">
+                <span className="text-xs text-on-surface-variant">
+                  {topCategory.count} movimientos en el año
+                </span>
+              </div>
             </>
           ) : (
-            <div className="text-xs text-slate-400 my-auto">Sin datos en {selectedYear}</div>
+            <div className="text-xs text-on-surface-variant my-auto py-4">
+              Sin datos registrados en {selectedYear}
+            </div>
           )}
         </div>
       </div>
 
-      {/* 2. Panel de Pérdida o Ganancia Cambiaria Anual (BCV) */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+      {/* Fila 2: Pérdida o Ganancia Cambiaria Acumulada (BCV) */}
+      <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-xs border border-slate-100 flex flex-col gap-5">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-secondary-fixed/50 flex items-center justify-center text-secondary shadow-2xs shrink-0">
               <Scale className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-slate-800">
+              <h2 className="text-base sm:text-lg text-on-surface font-bold">
                 Pérdida o Ganancia Cambiaria Acumulada ({selectedYear})
-              </h3>
-              <p className="text-xs text-slate-400">
+              </h2>
+              <p className="text-xs text-on-surface-variant mt-0.5">
                 Compara los Bolívares que pagaste al momento de cada compra contra su valor actual a tasa BCV de hoy (Bs. {currentBcvRate.toFixed(2)}/USD)
               </p>
             </div>
           </div>
 
           {annualKpis.totalPunctualUsd > 0 && (
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+            <div
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono text-xs sm:text-sm font-semibold shadow-2xs shrink-0 ${
                 annualKpis.exchangeDiffUsd >= 0
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
+                  ? 'bg-secondary-fixed text-[#00201d]'
+                  : 'bg-error-container text-on-error-container'
               }`}
             >
               {annualKpis.exchangeDiffUsd >= 0 ? (
-                <TrendingUp className="w-3.5 h-3.5" />
+                <TrendingUp className="w-4 h-4 text-secondary shrink-0" />
               ) : (
-                <TrendingDown className="w-3.5 h-3.5" />
+                <TrendingDown className="w-4 h-4 text-error shrink-0" />
               )}
-              Efecto Cambiario: {annualKpis.exchangeDiffUsd >= 0 ? '+' : ''}
-              {formatCurrency(annualKpis.exchangeDiffUsd)} (
-              {annualKpis.exchangeDiffPercent.toFixed(1)}%)
-            </span>
+              <span>
+                Efecto Cambiario: {annualKpis.exchangeDiffUsd >= 0 ? '+' : ''}
+                {formatCurrency(annualKpis.exchangeDiffUsd)} (
+                {annualKpis.exchangeDiffPercent.toFixed(1)}%)
+              </span>
+            </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-          <div>
-            <span className="text-xs text-slate-500 block">
+        {/* 4 Sub-columnas de Métricas Cambiarias */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-surface-container-low rounded-xl font-tabular">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-xs text-on-surface-variant">
               Bolívares Pagados (Histórico)
             </span>
-            <span className="text-base font-bold text-slate-800 mt-0.5 block">
+            <span className="font-mono text-lg font-bold text-on-surface">
               {formatBolivares(annualKpis.totalHistoricalVes)}
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-on-surface-variant">
               Tasa promedio pagada: Bs. {annualKpis.avgHistoricalRate.toFixed(2)}/$
             </span>
           </div>
 
-          <div>
-            <span className="text-xs text-slate-500 block">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-xs text-on-surface-variant">
               Valor USD al Día del Gasto
             </span>
-            <span className="text-base font-bold text-slate-800 mt-0.5 block">
+            <span className="font-mono text-lg font-bold text-on-surface">
               {formatCurrency(annualKpis.totalPunctualUsd)}
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-on-surface-variant">
               Costo real en divisas cuando compraste
             </span>
           </div>
 
-          <div>
-            <span className="text-xs text-slate-500 block">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-xs text-on-surface-variant">
               Esos Bs. a Tasa BCV de Hoy
             </span>
-            <span className="text-base font-bold text-indigo-700 mt-0.5 block">
+            <span className="font-mono text-lg font-bold text-on-surface">
               {formatCurrency(annualKpis.usdEquivalentAtTodayRate)}
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-on-surface-variant">
               Tasa BCV hoy: Bs. {currentBcvRate.toFixed(2)}/$
             </span>
           </div>
 
-          <div>
-            <span className="text-xs text-slate-500 block">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-xs text-on-surface-variant">
               Diferencia por Devaluación
             </span>
             <span
-              className={`text-base font-bold mt-0.5 block ${
-                annualKpis.exchangeDiffVes >= 0 ? 'text-emerald-600' : 'text-red-600'
+              className={`font-mono text-lg font-bold ${
+                annualKpis.exchangeDiffVes >= 0 ? 'text-secondary' : 'text-error'
               }`}
             >
               {annualKpis.exchangeDiffVes >= 0 ? '+' : ''}
               {formatBolivares(annualKpis.exchangeDiffVes)}
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span
+              className={`text-xs font-medium ${
+                annualKpis.exchangeDiffUsd >= 0
+                  ? 'text-secondary'
+                  : 'text-on-surface-variant'
+              }`}
+            >
               {annualKpis.exchangeDiffUsd >= 0
                 ? `Ahorraste ${formatCurrency(annualKpis.exchangeDiffUsd)} frente a comprar hoy en Bs.`
                 : `Variación de ${formatCurrency(annualKpis.exchangeDiffUsd)}`}
@@ -585,37 +648,41 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Gráficos Interactivos Anuales (Barras de 12 Meses + Dona de Categorías) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Gráfico de Barras: Los 12 Meses del Año */}
-        <div className="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
+      {/* Fila 3: Split de Gráficas (7 cols Barras 12 Meses + 5 cols Dona Categorías) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Columna Izquierda: Gastos Mes a Mes (USD) [Span 7] */}
+        <div className="lg:col-span-7 bg-surface-container-lowest rounded-2xl p-6 shadow-xs border border-slate-100 flex flex-col justify-between">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-sm font-semibold text-slate-800">
+              <BarChart3 className="w-5 h-5 text-secondary" />
+              <h2 className="text-base sm:text-lg font-bold text-on-surface">
                 Gastos Mes a Mes en {selectedYear} (USD)
-              </h3>
+              </h2>
             </div>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-on-surface-variant hidden sm:inline-block">
               Haz clic en una barra para abrir ese mes
             </span>
           </div>
 
-          <div className="h-72 w-full">
+          <div className="h-64 sm:h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={monthlyChartData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                margin={{ top: 12, right: 10, left: -8, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#dce9ff"
+                />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: '#45464d', fontFamily: 'JetBrains Mono' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: '#76777d', fontFamily: 'JetBrains Mono' }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(val) => `$${val}`}
@@ -626,13 +693,14 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
                     name === 'punctualUsd'
                       ? 'Gastos Puntuales'
                       : name === 'subscriptionsUsd'
-                      ? 'Suscripciones'
-                      : 'Total USD',
+                        ? 'Suscripciones'
+                        : 'Total USD',
                   ]}
                   labelFormatter={(label) => `Mes: ${label} ${selectedYear}`}
                   contentStyle={{
                     borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid #c6c6cd',
+                    fontFamily: 'JetBrains Mono',
                     fontSize: '12px',
                   }}
                 />
@@ -640,8 +708,7 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
                   dataKey="punctualUsd"
                   name="punctualUsd"
                   stackId="a"
-                  fill="#4f46e5"
-                  radius={[4, 4, 0, 0]}
+                  radius={[6, 6, 0, 0]}
                   className="cursor-pointer"
                   onClick={(_data, index) => {
                     const item = monthlyChartData[index];
@@ -649,135 +716,210 @@ export const AnnualSummaryView: React.FC<AnnualSummaryViewProps> = ({
                       onSelectMonthAndGoToMonthly(item.monthKey);
                     }
                   }}
-                />
+                >
+                  {monthlyChartData.map((entry) => {
+                    const isPeak =
+                      annualKpis.highestMonth &&
+                      entry.monthKey === annualKpis.highestMonth.monthKey;
+                    return (
+                      <Cell
+                        key={entry.monthKey}
+                        fill={isPeak ? '#006a61' : '#131b2e'}
+                      />
+                    );
+                  })}
+                </Bar>
                 {includeSubscriptions && (
                   <Bar
                     dataKey="subscriptionsUsd"
                     name="subscriptionsUsd"
                     stackId="a"
-                    fill="#818cf8"
-                    radius={[4, 4, 0, 0]}
+                    fill="#6bd8cb"
+                    radius={[6, 6, 0, 0]}
+                    className="cursor-pointer"
+                    onClick={(_data, index) => {
+                      const item = monthlyChartData[index];
+                      if (item?.monthKey) {
+                        onSelectMonthAndGoToMonthly(item.monthKey);
+                      }
+                    }}
                   />
                 )}
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          <div className="pt-3 mt-2 border-t border-surface-container flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant">
+            <span>
+              {annualKpis.activeMonthNames.length > 0
+                ? `* Registros contabilizados en: ${annualKpis.activeMonthNames.slice(0, 4).join(', ')}${annualKpis.activeMonthNames.length > 4 ? ` y ${annualKpis.activeMonthNames.length - 4} más` : ''} ${selectedYear}.`
+                : `Sin registros contabilizados en ${selectedYear}.`}
+            </span>
+            <span className="font-mono font-semibold text-on-surface font-tabular">
+              Total: {formatCurrency(annualKpis.totalWithSubsUsd)}
+            </span>
+          </div>
         </div>
 
-        {/* Gráfico de Dona: Distribución Anual por Categorías */}
-        <div className="lg:col-span-5 bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
-          <div className="flex items-center gap-2 mb-4">
-            <PieChartIcon className="w-5 h-5 text-indigo-600" />
-            <h3 className="text-sm font-semibold text-slate-800">
-              Proporción Anual por Categoría
-            </h3>
+        {/* Columna Derecha: Proporción Anual por Categoría [Span 5] */}
+        <div className="lg:col-span-5 bg-surface-container-lowest rounded-2xl p-6 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-secondary" />
+              <h2 className="text-base sm:text-lg font-bold text-on-surface">
+                Proporción Anual por Categoría
+              </h2>
+            </div>
           </div>
 
           {annualCategoryBreakdown.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+            <div className="flex-1 flex items-center justify-center text-sm text-on-surface-variant py-12">
               Sin gastos registrados en {selectedYear}
             </div>
           ) : (
             <>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={annualCategoryBreakdown}
-                      dataKey="totalUsd"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={52}
-                      outerRadius={82}
-                      paddingAngle={3}
+              <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center justify-between gap-5 my-auto">
+                {/* Dona con total centrado */}
+                <div className="relative w-44 h-44 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={annualCategoryBreakdown}
+                        dataKey="totalUsd"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={54}
+                        outerRadius={78}
+                        paddingAngle={2.5}
+                      >
+                        {annualCategoryBreakdown.map((entry) => (
+                          <Cell key={entry.id} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: unknown) => formatCurrency(Number(value) || 0)}
+                        contentStyle={{
+                          borderRadius: '10px',
+                          border: '1px solid #c6c6cd',
+                          fontFamily: 'JetBrains Mono',
+                          fontSize: '12px',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+                    <span className="font-mono text-base font-bold text-on-surface leading-none font-tabular">
+                      {formatCurrency(annualKpis.totalPunctualUsd)}
+                    </span>
+                    <span className="font-mono text-[10px] text-on-surface-variant uppercase mt-1">
+                      Total Anual
+                    </span>
+                  </div>
+                </div>
+
+                {/* Leyenda de categorías */}
+                <div className="flex flex-col gap-1.5 w-full max-h-52 overflow-y-auto pr-1">
+                  {annualCategoryBreakdown.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="flex items-center justify-between text-xs hover:bg-surface-container-low px-2 py-1.5 rounded-lg transition-colors"
                     >
-                      {annualCategoryBreakdown.map((entry) => (
-                        <Cell key={entry.id} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: unknown) => formatCurrency(Number(value) || 0)}
-                      contentStyle={{
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        fontSize: '12px',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                        <span className="text-on-surface font-medium truncate">
+                          {cat.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0 font-tabular">
+                        <span className="font-mono text-on-surface font-semibold">
+                          {formatCurrency(cat.totalUsd)}
+                        </span>
+                        <span className="font-mono text-on-surface-variant w-8 text-right">
+                          {cat.percentage.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Leyenda compacta */}
-              <div className="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                {annualCategoryBreakdown.map((cat) => (
-                  <div
-                    key={cat.id}
-                    className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      <span className="font-medium text-slate-700 truncate">
-                        {cat.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-semibold text-slate-800">
-                        {formatCurrency(cat.totalUsd)}
-                      </span>
-                      <span className="text-slate-400 w-9 text-right">
-                        {cat.percentage.toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="pt-3 mt-4 flex items-center justify-between border-t border-surface-container text-xs">
+                <span className="text-on-surface-variant">
+                  {annualCategoryBreakdown.length}{' '}
+                  {annualCategoryBreakdown.length === 1
+                    ? 'categoría activa'
+                    : 'categorías activas'}{' '}
+                  este año
+                </span>
+                <button
+                  type="button"
+                  onClick={scrollToDetail}
+                  className="font-mono text-xs text-secondary hover:underline font-semibold cursor-pointer"
+                >
+                  Ver detalle analítico →
+                </button>
               </div>
             </>
           )}
         </div>
       </div>
 
-      {/* 4. Desglose Completo de Categorías y Subcategorías en el Año */}
+      {/* Fila 4: Detalle Anual Acumulado por Categoría y Subcategoría */}
       {annualCategoryBreakdown.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs">
-          <h3 className="text-sm font-semibold text-slate-800 mb-4">
-            Detalle Anual Acumulado por Categoría y Subcategoría ({selectedYear})
-          </h3>
+        <div id="annual-category-detail" className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <Layers className="w-5 h-5 text-secondary shrink-0" />
+              <h2 className="text-base sm:text-lg font-bold text-on-surface">
+                Detalle Anual Acumulado por Categoría y Subcategoría ({selectedYear})
+              </h2>
+            </div>
+            <span className="font-mono text-xs text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-md">
+              {annualKpis.totalTransactions} Transacciones
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {annualCategoryBreakdown.map((cat) => (
               <div
                 key={cat.id}
-                className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-2.5"
+                className="bg-surface-container-lowest rounded-xl p-5 shadow-xs border border-slate-100 flex flex-col justify-between gap-4 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span
-                      className="w-3 h-3 rounded-full"
+                      className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: cat.color }}
                     />
-                    <span className="text-sm font-bold text-slate-800">{cat.name}</span>
-                    <span className="text-xs text-slate-400">({cat.count} mov.)</span>
+                    <span className="text-base sm:text-lg font-bold text-on-surface truncate">
+                      {cat.name}
+                    </span>
+                    <span className="font-mono text-xs text-on-surface-variant shrink-0">
+                      ({cat.count} mov.)
+                    </span>
                   </div>
-                  <span className="text-sm font-bold text-slate-900">
+                  <span className="font-mono text-lg font-bold text-on-surface font-tabular shrink-0">
                     {formatCurrency(cat.totalUsd)}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                {/* Chips de Subcategorías */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   {cat.subcategories.map((sub, i) => (
-                    <span
+                    <div
                       key={i}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200/80 text-xs text-slate-600"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container rounded-lg text-xs"
                     >
-                      <CornerDownRight className="w-3 h-3 text-slate-400" />
-                      <span>{sub.name}:</span>
-                      <strong className="text-slate-800">
+                      <CornerDownRight className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
+                      <span className="text-on-surface-variant">{sub.name}:</span>
+                      <span className="font-mono text-on-surface font-semibold font-tabular">
                         {formatCurrency(sub.totalUsd)}
-                      </strong>
-                    </span>
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>

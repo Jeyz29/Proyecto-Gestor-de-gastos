@@ -11,6 +11,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/supabase': {
+        target: 'https://yacfwgdbtojuzdnpqfdm.supabase.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/supabase/, ''),
+      },
     },
   },
 });
