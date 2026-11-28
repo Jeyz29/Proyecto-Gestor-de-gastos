@@ -338,11 +338,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             <button
               type="button"
               onClick={() => setSearchAllMonths((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                searchAllMonths
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${searchAllMonths
                   ? 'bg-secondary text-white shadow-2xs'
                   : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-              }`}
+                }`}
               title="Buscar movimientos en todo tu historial de meses"
             >
               <Globe className="w-3.5 h-3.5" />
@@ -414,13 +413,13 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         </div>
       </div>
 
-      {/* Cabecera de Columnas estilo Stitch Ledger */}
+      {/* Cabecera de Columnas estilo Stitch */}
       {displayedExpenses.length > 0 && (
         <div className="hidden sm:grid sm:grid-cols-12 px-6 py-2.5 bg-surface-container-low/60 border-b border-slate-100 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-semibold">
           <div className="col-span-2">Fecha</div>
           <div className="col-span-4">Concepto & Tasa BCV</div>
           <div className="col-span-3">Categoría / Subcategoría</div>
-          <div className="col-span-3 text-right">Monto Ledger</div>
+          <div className="col-span-3 text-right">Monto </div>
         </div>
       )}
 
@@ -496,11 +495,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                             previewUsd > 0 ? previewUsd.toFixed(2) : String(expense.amount)
                           );
                         }}
-                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
-                          editCurrency === 'USD'
+                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${editCurrency === 'USD'
                             ? 'bg-secondary text-white'
                             : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
+                          }`}
                       >
                         USD ($)
                       </button>
@@ -512,11 +510,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                             previewEur > 0 ? previewEur.toFixed(2) : ''
                           );
                         }}
-                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
-                          editCurrency === 'EUR'
+                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${editCurrency === 'EUR'
                             ? 'bg-secondary text-white'
                             : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
+                          }`}
                       >
                         EUR (€)
                       </button>
@@ -528,11 +525,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                             previewVes > 0 ? previewVes.toFixed(2) : ''
                           );
                         }}
-                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
-                          editCurrency === 'VES'
+                        className={`px-2 py-0.5 rounded font-bold cursor-pointer ${editCurrency === 'VES'
                             ? 'bg-secondary text-white'
                             : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
+                          }`}
                       >
                         Bs. (BCV)
                       </button>
@@ -731,11 +727,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                     )}
                     {hasExchangeDiff && (
                       <span
-                        className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${
-                          itemExchangeDiffUsd > 0
+                        className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${itemExchangeDiffUsd > 0
                             ? 'bg-secondary-container/40 text-on-secondary-container'
                             : 'bg-error-container/60 text-error'
-                        }`}
+                          }`}
                         title="Valor actual en USD de esos Bolívares a la tasa BCV de hoy"
                       >
                         Hoy: {formatCurrency(usdTodayEquivalent)} (
